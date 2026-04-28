@@ -26,6 +26,13 @@ export async function GET(_: Request, { params }: RouteParams) {
         error: true,
         createdAt: true,
         completedAt: true,
+        workflow: {
+          select: {
+            id: true,
+            name: true,
+            steps: true,
+          },
+        },
       },
     });
 

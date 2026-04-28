@@ -692,14 +692,89 @@ export default function WorkflowBuilderPage() {
               {testResult ? (
                 <div className="rounded-md border bg-muted/40 p-3 mt-3">
                   <p className="text-xs font-medium">
-                    Execution: {testResult.id} — <span className="font-semibold">{testResult.status}</span>
+                    Execution: {testResult.id} —{' '}
+                    <span className="font-semibold">{String(testResult.status ?? "")}</span>
                   </p>
-                  <pre className="mt-2 overflow-auto text-xs">{JSON.stringify(testResult.stepResults ?? testResult, null, 2)}</pre>
-                  <div className="mt-2">
-                    <a className="text-sm underline" href={`/dashboard/executions/${testResult.id}`}>
-                      Open in dashboard
-                    </a>
-                  </div>
+
+                  {/* Execution error */}
+                  {testResult.error ? (
+                    <p className="mt-2 text-sm text-red-600">Error: {String(testResult.error)}</p>
+                  ) : null}
+
+                  {/* Compute workflow steps from execution.workflow or local nodes */}
+                  {(() => {
+                    const completed = Array.isArray(testResult.stepResults)
+                      ? testResult.stepResults.length
+                      : 0;
+
+                    // derive steps: prefer execution.workflow.steps (from server), fallback to local nodes
+                    const wfSteps: Array<any> =
+                      (testResult.workflow && Array.isArray(testResult.workflow.steps)
+                        ? testResult.workflow.steps
+                        : buildOrderedActionIds(nodes, edges).map((id) => {
+                            const n = nodes.find((x) => x.id === id);
+                            return n ? { type: n.data.actionType ?? String(n.data.label), config: n.data.config } : { type: `step_${id}` };
+                          })) ?? [];
+
+                    return (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-muted-foreground">Progress</div>
+                          <div className="text-xs">{completed}/{wfSteps.length} steps</div>
+                        </div>
+
+                        <div className="space-y-2 mt-2">
+                          {wfSteps.map((step: any, idx: number) => {
+                            const done = idx < completed;
+                            const inProgress = idx === completed && String(testResult.status).toUpperCase() === "RUNNING";
+                            const stepResult = (testResult.stepResults && testResult.stepResults[idx]) || null;
+
+                            return (
+                              <div key={idx} className="flex gap-3 items-start rounded-md border bg-white p-3">
+                                <div className="w-8 flex items-center justify-center text-sm font-medium">
+                                  {done ? '✓' : inProgress ? '●' : idx + 1}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm font-medium">{step.type ?? step.actionType ?? `Step ${idx + 1}`}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {done ? 'Completed' : inProgress ? 'In progress' : 'Pending'}
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-2 text-xs text-muted-foreground">
+                                    {stepResult ? (
+                                      <pre className="max-h-48 overflow-auto text-xs">{JSON.stringify(stepResult.result ?? stepResult, null, 2)}</pre>
+                                    ) : (
+                                      <div className="text-xs">No output yet.</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <a className="text-sm underline" href={`/dashboard/executions/${testResult.id}`}>
+                            Open in dashboard
+                          </a>
+                          <button
+                            className="text-sm underline"
+                            onClick={() => {
+                              try {
+                                navigator.clipboard.writeText(JSON.stringify(testResult, null, 2));
+                                setMessage('Execution JSON copied to clipboard.');
+                              } catch (e) {
+                                setError('Failed to copy logs.');
+                              }
+                            }}
+                          >
+                            Copy logs
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : null}
             </div>

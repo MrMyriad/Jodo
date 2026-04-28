@@ -663,6 +663,27 @@ export async function processWorkflowExecutionJob(
         result,
         timestamp: new Date().toISOString(),
       });
+
+      // Persist intermediate step results so the UI can poll and show
+      // per-step progress while the workflow runs.
+      try {
+        const stepResultsPrisma = actionResults.map((r) =>
+          toPrismaJson(r) as Prisma.InputJsonValue,
+        );
+
+        await prisma.execution.update({
+          where: { id: jobData.executionId },
+          data: {
+            stepResults: stepResultsPrisma,
+            status: "RUNNING",
+          },
+        });
+      } catch (persistErr) {
+        console.error(
+          `[automation-engine] failed to persist stepResults for execution=${jobData.executionId}:`,
+          persistErr,
+        );
+      }
     }
 
     await markExecutionSuccess(workflow, jobData.executionId, actionResults);
