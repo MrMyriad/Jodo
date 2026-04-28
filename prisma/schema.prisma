@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE      // 500 tasks/mo
+  PRO       // ₹299/mo - 10,000 tasks
+  BUSINESS  // ₹999/mo - unlimited
+}
+
+enum ExecutionStatus {
+  RUNNING
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+enum IntegrationType {
+  RAZORPAY
+  WHATSAPP_BUSINESS
+  INSTAGRAM
+  EXOTEL
+  ZOHO_BOOKS
+  GOOGLE_SHEETS
+  SHOPIFY
+  PHONEPE
+  PAYTM
+  SHIPROCKET
+  DELHIVERY
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  name             String?
+  phone            String?
+  language         String   @default("en") // en, hi, ta, te
+  plan             Plan     @default(FREE)
+  planExpiry       DateTime?
+  stripeCustomerId String?
+
+  integrations      Integration[]
+  workflows         Workflow[]
+  executions        Execution[]
+
+  tasksUsedThisMonth Int      @default(0)
+  tasksResetAt       DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Integration {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        IntegrationType
+  name        String
+  credentials Json
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("integrations")
+}
+
+model Workflow {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  isActive    Boolean @default(false)
+
+  trigger Json   // { type: "razorpay.payment_captured", integrationId: "xxx" }
+  steps   Json[] // Array of action steps
+
+  executions Execution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("workflows")
+}
+
+model Execution {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status      ExecutionStatus
+  triggerData Json
+  stepResults Json[]
+  error       String? @db.Text
+
+  tasksConsumed Int @default(0)
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([workflowId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("executions")
+}
+
+model Template {
+  id            String   @id @default(cuid())
+  name          String
+  nameHi        String?
+  description   String
+  descriptionHi String?
+  category      String
+  icon          String
+
+  trigger Json
+  steps   Json[]
+
+  usageCount Int     @default(0)
+  isPopular  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@index([isPopular])
+  @@map("templates")
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
