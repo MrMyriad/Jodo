@@ -168,15 +168,18 @@ export function WorkflowControlPanel({
           {workflows.map((workflow) => (
             <Card key={workflow.id}>
               <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex flex-col gap-1">
                     <CardTitle>{workflow.name}</CardTitle>
                     <CardDescription>
                       Trigger: {workflow.triggerType} | Steps:{" "}
                       {workflow.stepCount}
                     </CardDescription>
                   </div>
-                  <Badge variant={workflow.isActive ? "default" : "secondary"}>
+                  <Badge
+                    variant={workflow.isActive ? "default" : "secondary"}
+                    className="w-fit shrink-0"
+                  >
                     {workflow.isActive ? "LIVE" : "PAUSED"}
                   </Badge>
                 </div>

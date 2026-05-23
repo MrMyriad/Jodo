@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { executeWorkflowsForTriggerTypes } from "@/lib/automation-engine";
 import { decryptConnectionCredentials } from "@/lib/connection-service";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 type RazorpayEventPayload = {
   event: string;
@@ -88,6 +89,9 @@ function buildTriggerData(
 }
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.webhook);
+  if (limited) return limited;
+
   const signature = req.headers.get("x-razorpay-signature");
   if (!signature) {
     return NextResponse.json(

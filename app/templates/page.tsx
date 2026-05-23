@@ -36,7 +36,7 @@ function templateGrid(category?: TemplateCategory) {
             <CardTitle className="text-lg">{template.title}</CardTitle>
             <CardDescription>{template.description}</CardDescription>
           </CardHeader>
-          <CardFooter className="flex items-center justify-between gap-3">
+          <CardFooter className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
               {template.usageCount}
             </p>

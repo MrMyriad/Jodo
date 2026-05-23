@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -24,13 +24,13 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
   const [isActivating, setIsActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState(
-    "Instagram DM → WhatsApp Follow-up → Save Lead",
+    "Instagram DM -> WhatsApp Follow-up -> Save Lead",
   );
   const [autoReply, setAutoReply] = useState(
-    "Thanks for messaging! We’ll WhatsApp you the catalog in 1 minute.",
+    "Thanks for messaging. Reply with your WhatsApp number and we will send the catalog instantly.",
   );
   const [whatsAppMessage, setWhatsAppMessage] = useState(
-    "Hi! Here’s our catalog: {{catalogUrl}}",
+    "Hi! Here is our catalog: {{catalogUrl}}",
   );
 
   const canContinue = useMemo(() => {
@@ -49,7 +49,6 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
         body: JSON.stringify({
           templateKey: "instagram_dm_whatsapp_followup",
           name: workflowName,
-          // we store WhatsApp message template in the template activation (engine step config uses it)
           messageTemplate: whatsAppMessage,
           instagramReplyTemplate: autoReply,
         }),
@@ -78,14 +77,14 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
           <Link href="/templates" className="hover:underline">
             Templates
           </Link>{" "}
-          / Instagram DM → WhatsApp Follow-up
+          / Instagram DM -&gt; WhatsApp Follow-up
         </p>
         <h1 className="text-3xl font-semibold">
-          Instagram DM → WhatsApp Follow-up
+          Instagram DM -&gt; WhatsApp Follow-up
         </h1>
         <p className="text-muted-foreground">
-          When someone DMs you on Instagram, send an auto-reply, then WhatsApp
-          your catalog, and save the lead.
+          When someone DMs you, auto-reply on Instagram, follow up on WhatsApp,
+          send confirmation reply, and save lead.
         </p>
       </header>
 
@@ -105,16 +104,14 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">Instagram Business</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                We’ll listen to DMs instantly via webhooks.
+                We will listen to DMs instantly via webhook events.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
                   <Link href="/connections">Connect Instagram</Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link href="/integrations/instagram/connect">
-                    Guided setup
-                  </Link>
+                  <Link href="/integrations/instagram/connect">Guided setup</Link>
                 </Button>
               </div>
             </div>
@@ -124,16 +121,14 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">WhatsApp Business</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Follow up instantly on WhatsApp after DM.
+                Send follow-up instantly after DM.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
                   <Link href="/connections">Connect WhatsApp</Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link href="/integrations/whatsapp/connect">
-                    Guided setup
-                  </Link>
+                  <Link href="/integrations/whatsapp/connect">Guided setup</Link>
                 </Button>
               </div>
             </div>
@@ -143,7 +138,7 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">Google Sheets</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                We’ll append a row as a lead (name/phone/source).
+                Append each lead row (name, phone, source) for follow-up tracking.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
@@ -181,9 +176,8 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
                   rows={3}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Tip: Ask them to share their WhatsApp number in the DM. If
-                  they send a 10-digit number, we’ll auto-detect it and send
-                  WhatsApp instantly.
+                  Tip: If the user sends a 10-digit number in DM, we auto-detect
+                  it and send WhatsApp instantly.
                 </p>
               </div>
 
@@ -205,14 +199,13 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
               <div className="rounded-lg border p-4">
                 <p className="font-medium">Ready to activate</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Once live, your replies and follow-ups will run instantly.
+                  Once live, replies and follow-ups run instantly.
                 </p>
               </div>
-              <Button onClick={activate} disabled={isActivating}>
+              <Button onClick={() => void activate()} disabled={isActivating}>
                 {isActivating ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />{" "}
-                    Activating...
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Activating...
                   </>
                 ) : (
                   "Activate automation"
@@ -238,9 +231,7 @@ export default function InstagramDmWhatsAppFollowupTemplatePage() {
 
           {error ? (
             <Card className="border-error/30 bg-error/5">
-              <CardContent className="p-4 text-sm text-error">
-                {error}
-              </CardContent>
+              <CardContent className="p-4 text-sm text-error">{error}</CardContent>
             </Card>
           ) : null}
         </CardContent>

@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { Plan } from "@prisma/client";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import EmailProvider from "next-auth/providers/email";
 import GoogleProvider from "next-auth/providers/google";
+import { sendWelcomeSequence } from "@/lib/email/sequences";
 import { prisma } from "@/lib/prisma";
 
 const providers = [];
@@ -95,6 +99,15 @@ if (providers.length === 0) {
               plan: created.plan ?? undefined,
             } as any;
           } catch (err) {
+            if (process.env.NODE_ENV === "development") {
+              return {
+                id: `dev:${email}`,
+                email,
+                name: email.split("@")[0],
+                plan: Plan.FREE,
+              } as any;
+            }
+
             return null;
           }
         },
@@ -137,6 +150,23 @@ export const authOptions: NextAuthOptions = {
     newUser: "/onboarding",
   },
   providers,
+  events: {
+    createUser: async ({ user }) => {
+      if (!user?.id || !user.email) {
+        return;
+      }
+
+      try {
+        await sendWelcomeSequence({
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+        });
+      } catch (error) {
+        console.error("[auth.createUser] welcome sequence failed:", error);
+      }
+    },
+  },
   callbacks: {
     // Populate JWT token on first sign-in so session() can read it when
     // using the `jwt` session strategy in development.

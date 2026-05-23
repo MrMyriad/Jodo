@@ -1,7 +1,9 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
+import { ReferralCard } from "@/components/settings/referral-card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { normalizeLanguage } from "@/lib/i18n";
 import {
   Card,
   CardContent,
@@ -76,7 +78,14 @@ export default async function SettingsPage({
               </p>
               <p>
                 <span className="font-medium">Language:</span> English (Hindi UI
-                support in roadmap)
+                / Hindi)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Current:{" "}
+                {normalizeLanguage(user.language) === "hi"
+                  ? "Hindi"
+                  : "English"}
+                . Use the language switcher in the sidebar.
               </p>
             </CardContent>
           </Card>
@@ -92,16 +101,18 @@ export default async function SettingsPage({
               </p>
               <p className="text-sm text-muted-foreground">
                 Pro plan unlocks unlimited workflows and 10,000 executions/month
-                at ₹299.
+                at Rs 299.
               </p>
               <Link
-                href="/dashboard"
+                href="/pricing"
                 className={buttonVariants({ size: "sm" })}
               >
                 Upgrade to Pro
               </Link>
             </CardContent>
           </Card>
+
+          <ReferralCard />
         </section>
       </div>
     </AppShell>

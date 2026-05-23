@@ -41,7 +41,7 @@ export async function GET(_: Request, { params }: RouteParams) {
     }
 
     return NextResponse.json({ execution });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch execution." }, { status: 500 });
   }
 }

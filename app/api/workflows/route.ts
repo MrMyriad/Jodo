@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toPrismaJson } from "@/lib/prisma-json";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 const workflowCreateSchema = z.object({
   name: z.string().trim().min(2, "Workflow name is too short."),
@@ -52,6 +53,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.workflowWrite);
+  if (limited) return limited;
+
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {

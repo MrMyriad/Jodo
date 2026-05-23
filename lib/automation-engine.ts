@@ -235,6 +235,50 @@ function inferCustomerEmailFromTrigger(
   return null;
 }
 
+function resolveDocumentLinkForWhatsAppAction(
+  config: Record<string, unknown>,
+  triggerData: TriggerPayload,
+  stepResultsRaw: Array<Record<string, unknown>>,
+): string | undefined {
+  const explicitDocumentLink = config.documentLink;
+  if (typeof explicitDocumentLink === "string" && explicitDocumentLink.trim()) {
+    return replaceVariablesWithStepResults(
+      explicitDocumentLink,
+      triggerData,
+      stepResultsRaw,
+    );
+  }
+
+  const attachInvoiceStepRaw = config.attachInvoicePdfFromStep;
+  const stepIndex =
+    typeof attachInvoiceStepRaw === "number"
+      ? attachInvoiceStepRaw
+      : attachInvoiceStepRaw === true
+        ? 0
+        : null;
+
+  if (stepIndex === null) {
+    return undefined;
+  }
+
+  const stepResult = stepResultsRaw[stepIndex];
+  if (!stepResult || typeof stepResult !== "object") {
+    return undefined;
+  }
+
+  const directPdf = stepResult.invoicePdfUrl;
+  if (typeof directPdf === "string" && directPdf.trim()) {
+    return directPdf;
+  }
+
+  const fallbackPdf = stepResult.pdfUrl;
+  if (typeof fallbackPdf === "string" && fallbackPdf.trim()) {
+    return fallbackPdf;
+  }
+
+  return undefined;
+}
+
 async function executeAction(
   userId: string,
   action: WorkflowAction,
@@ -303,6 +347,7 @@ async function executeAction(
       const credentials = parseConnectionCredentials(connection.credentials);
       const accessToken = credentials.accessToken as string | undefined;
       const organizationId = credentials.organizationId as string | undefined;
+      const apiDomain = credentials.apiDomain as string | undefined;
 
       if (!accessToken || !organizationId) {
         throw new Error(
@@ -310,7 +355,7 @@ async function executeAction(
         );
       }
 
-      const { createZohoInvoice } =
+      const { buildZohoInvoicePdfLink, createZohoInvoice } =
         await import("@/lib/integrations/zoho-books");
 
       const itemsRaw = config.items;
@@ -351,7 +396,7 @@ async function executeAction(
           ];
 
       const response = await createZohoInvoice({
-        credentials: { accessToken, organizationId },
+        credentials: { accessToken, organizationId, apiDomain },
         customerName:
           (config.customerName && typeof config.customerName === "string"
             ? replaceVariables(config.customerName, triggerData)
@@ -364,6 +409,14 @@ async function executeAction(
         invoiceId: response.invoice?.invoice_id ?? null,
         invoiceNumber: response.invoice?.invoice_number ?? null,
         invoiceUrl: response.invoice?.invoice_url ?? null,
+        invoicePdfUrl:
+          response.invoice?.pdf_url ??
+          (response.invoice?.invoice_id
+            ? buildZohoInvoicePdfLink(
+                { accessToken, organizationId, apiDomain },
+                response.invoice.invoice_id,
+              )
+            : null),
         status: response.invoice?.status ?? null,
       };
     }
@@ -377,6 +430,9 @@ async function executeAction(
       const accessToken =
         (credentials.accessToken as string | undefined) ??
         process.env.WHATSAPP_ACCESS_TOKEN;
+      const businessAccountId =
+        (credentials.businessAccountId as string | undefined) ??
+        process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
 
       if (!phoneNumberId || !accessToken) {
         throw new Error(
@@ -410,10 +466,26 @@ async function executeAction(
         triggerData,
         stepResultsRaw,
       );
+
+      const documentLink = resolveDocumentLinkForWhatsAppAction(
+        config,
+        triggerData,
+        stepResultsRaw,
+      );
+
+      const documentFilename =
+        (config.documentFilename as string | undefined) ?? "invoice.pdf";
+
       const result = await sendWhatsAppMessage(
-        { phoneNumberId, accessToken },
+        { phoneNumberId, accessToken, businessAccountId },
         to,
         message,
+        documentLink
+          ? {
+              documentLink,
+              documentFilename,
+            }
+          : undefined,
       );
 
       return result;

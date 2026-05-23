@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toPrismaJson } from "@/lib/prisma-json";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 type RouteParams = {
   params: {
@@ -71,6 +73,9 @@ export async function GET(_req: Request, { params }: RouteParams) {
 }
 
 export async function PATCH(req: Request, { params }: RouteParams) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.workflowWrite);
+  if (limited) return limited;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,7 +104,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     );
   }
 
-  const updateData: Record<string, unknown> = {};
+  const updateData: Prisma.WorkflowUpdateInput = {};
   if (typeof parsed.data.name === "string") updateData.name = parsed.data.name;
   if (Object.prototype.hasOwnProperty.call(parsed.data, "description"))
     updateData.description = parsed.data.description;
@@ -112,7 +117,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
   const workflow = await prisma.workflow.update({
     where: { id: existing.id },
-    data: updateData as any,
+    data: updateData,
     select: {
       id: true,
       name: true,
@@ -128,6 +133,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
+  const limited = await enforceRateLimit(_req, rateLimitPolicies.workflowWrite);
+  if (limited) return limited;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

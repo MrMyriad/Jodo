@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Confetti } from "@/components/confetti";
 
 type Step = 1 | 2 | 3 | 4 | 5;
+type ConnectionSummary = {
+  id: string;
+  type: string;
+  isActive: boolean;
+};
 
 export default function RazorpayWhatsAppInvoiceTemplatePage() {
   const router = useRouter();
@@ -27,36 +32,43 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [messageTemplate, setMessageTemplate] = useState(
-    "Hi {{customer.name}}, your payment of ₹{{amount}} is received. Invoice: {{step0.invoiceUrl}}",
+    "Hi {{customer.name}}, your payment of Rs {{amount}} is received. Invoice: {{step0.invoiceUrl}}",
   );
   const [workflowName, setWorkflowName] = useState(
-    "Razorpay Payment → Zoho Invoice → WhatsApp Receipt",
+    "Razorpay Payment -> Zoho Invoice -> WhatsApp Receipt",
   );
 
-  const [connections, setConnections] = useState<Record<string, any>[]>([]);
-  const searchParams = useSearchParams();
-  const fromOnboarding = Boolean(searchParams?.get("fromOnboarding"));
+  const [connections, setConnections] = useState<ConnectionSummary[]>([]);
+  const [fromOnboarding, setFromOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setFromOnboarding(Boolean(params.get("fromOnboarding")));
+  }, []);
 
   useEffect(() => {
     fetch("/api/connections")
       .then((res) => res.json())
-      .then((data) => setConnections(data.connections ?? []))
+      .then((data: { connections?: ConnectionSummary[] }) =>
+        setConnections(data.connections ?? []),
+      )
       .catch(() => setConnections([]));
   }, []);
 
   useEffect(() => {
     if (!fromOnboarding) return;
     const required = ["RAZORPAY", "ZOHO_BOOKS", "WHATSAPP_BUSINESS"];
-    const ok = required.every((t) =>
-      connections.some((c) => c.type === t && c.isActive),
+    const ok = required.every((type) =>
+      connections.some((connection) => connection.type === type && connection.isActive),
     );
     if (ok) {
-      setTimeout(() => activate(), 600);
+      setTimeout(() => {
+        void activate();
+      }, 600);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connections, fromOnboarding]);
-
-  const has = (type: string) => connections.some((c) => c.type === type && c.isActive);
 
   const canContinue = useMemo(() => {
     if (step === 4) return messageTemplate.trim().length >= 2;
@@ -78,19 +90,24 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
           messageTemplate,
         }),
       });
+
       if (res.status === 401) {
         const current = typeof window !== "undefined" ? window.location.href : "/";
         router.push(`/auth/signin?callbackUrl=${encodeURIComponent(current)}`);
         return;
       }
-      const data = (await res.json()) as { error?: string; workflow?: { id: string } };
+
+      const data = (await res.json()) as {
+        error?: string;
+        workflow?: { id: string };
+      };
       if (!res.ok || !data.workflow?.id) {
         setError(data.error ?? "Failed to activate template.");
         return;
       }
 
       setSuccess(
-        "Activated! Your automation is live. Send a Razorpay test payment to see it run instantly.",
+        "Activated. Every Razorpay payment will create a Zoho invoice and send WhatsApp receipt + PDF.",
       );
       router.push("/workflows");
     } catch {
@@ -107,14 +124,13 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
           <Link href="/templates" className="hover:underline">
             Templates
           </Link>{" "}
-          / Razorpay → WhatsApp + GST Invoice
+          / Razorpay -&gt; WhatsApp + GST Invoice
         </p>
         <h1 className="text-3xl font-semibold">
-          Razorpay Payment → WhatsApp Receipt + GST Invoice
+          Razorpay Payment -&gt; WhatsApp Receipt + GST Invoice
         </h1>
         <p className="text-muted-foreground">
-          Connect 3 accounts, customize the WhatsApp message, and go live in
-          under 2 minutes.
+          Connect 3 accounts, customize the message, and go live in under 2 minutes.
         </p>
       </header>
 
@@ -134,7 +150,7 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">Razorpay</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                We’ll listen to instant webhooks from Razorpay (no delays).
+                We will listen to instant Razorpay webhooks (no polling delays).
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
@@ -151,7 +167,7 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">WhatsApp Business</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Send a receipt instantly to the customer after payment.
+                Send invoice receipt instantly after payment.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
@@ -168,8 +184,7 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">Zoho Books</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                We’ll create a GST invoice automatically and share it on
-                WhatsApp.
+                We will create a GST invoice and attach PDF on WhatsApp.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
@@ -186,13 +201,23 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="workflow-name">Workflow name</Label>
-                <Input id="workflow-name" value={workflowName} onChange={(e) => setWorkflowName(e.target.value)} />
+                <Input
+                    id="workflow-name"
+                    value={workflowName}
+                    onChange={(e) => setWorkflowName(e.target.value)}
+                  />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="wa-template">WhatsApp message</Label>
-                <Textarea id="wa-template" value={messageTemplate} onChange={(e) => setMessageTemplate(e.target.value)} rows={5} />
+                <Textarea
+                  id="wa-template"
+                  value={messageTemplate}
+                  onChange={(e) => setMessageTemplate(e.target.value)}
+                  rows={5}
+                />
                 <p className="text-xs text-muted-foreground">
-                  Variables: <code>{"{{customer.name}}"}</code>, <code>{"{{amount}}"}</code>, <code>{"{{step0.invoiceUrl}}"}</code>
+                  Variables: <code>{"{{customer.name}}"}</code>,{" "}
+                  <code>{"{{amount}}"}</code>, <code>{"{{step0.invoiceUrl}}"}</code>
                 </p>
               </div>
               <div className="rounded-md border bg-muted/40 p-3">
@@ -212,11 +237,10 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
               <div className="rounded-lg border p-4">
                 <p className="font-medium">Ready to go live</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Once activated, every Razorpay payment capture will trigger
-                  invoice creation + WhatsApp receipt.
+                  Every payment capture will run invoice + WhatsApp actions instantly.
                 </p>
               </div>
-              <Button onClick={activate} disabled={isActivating}>
+              <Button onClick={() => void activate()} disabled={isActivating}>
                 {isActivating ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Activating...
@@ -229,10 +253,16 @@ export default function RazorpayWhatsAppInvoiceTemplatePage() {
           ) : null}
 
           <div className="flex justify-between pt-2">
-            <Button variant="outline" onClick={() => setStep((s) => (s === 1 ? 1 : ((s - 1) as Step)))}>
+            <Button
+              variant="outline"
+              onClick={() => setStep((s) => (s === 1 ? 1 : ((s - 1) as Step)))}
+            >
               Back
             </Button>
-            <Button onClick={() => setStep((s) => (s === 5 ? 5 : ((s + 1) as Step)))} disabled={!canContinue}>
+            <Button
+              onClick={() => setStep((s) => (s === 5 ? 5 : ((s + 1) as Step)))}
+              disabled={!canContinue}
+            >
               Continue
             </Button>
           </div>

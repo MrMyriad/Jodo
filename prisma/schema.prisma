@@ -3,15 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 enum Plan {
-  FREE      // 500 tasks/mo
-  PRO       // ₹299/mo - 10,000 tasks
-  BUSINESS  // ₹999/mo - unlimited
+  FREE // 500 tasks/mo
+  PRO // ₹299/mo - 10,000 tasks
+  BUSINESS // ₹999/mo - unlimited
 }
 
 enum ExecutionStatus {
@@ -36,19 +36,87 @@ enum IntegrationType {
   DELHIVERY
 }
 
+enum GstDocumentType {
+  SALES_INVOICE
+  PURCHASE_BILL
+  CREDIT_NOTE
+  DEBIT_NOTE
+  BANK_STATEMENT
+  OTHER
+}
+
+enum GstDocumentStatus {
+  UPLOADED
+  QUEUED
+  EXTRACTING
+  EXTRACTED
+  NEEDS_REVIEW
+  FAILED
+}
+
+enum GstReviewStatus {
+  NEEDS_REVIEW
+  REVIEWED
+  APPROVED
+  REJECTED
+}
+
+enum GstChecklistStatus {
+  MISSING
+  REQUESTED
+  RECEIVED
+  WAIVED
+}
+
+enum GstReminderChannel {
+  WHATSAPP
+  EMAIL
+}
+
+enum GstReminderStatus {
+  DRAFT
+  SENT
+  DISCARDED
+}
+
+enum GstAuditAction {
+  CLIENT_CREATED
+  PERIOD_CREATED
+  DOCUMENT_UPLOADED
+  EXTRACTION_QUEUED
+  EXTRACTION_STARTED
+  EXTRACTION_COMPLETED
+  EXTRACTION_FAILED
+  INVOICE_CORRECTED
+  INVOICE_APPROVED
+  EXPORT_CREATED
+  REMINDER_GENERATED
+  CHECKLIST_UPDATED
+  REVIEW_NOTE_ADDED
+}
+
 model User {
-  id               String   @id @default(cuid())
-  email            String   @unique
+  id               String    @id @default(cuid())
+  email            String    @unique
   name             String?
   phone            String?
-  language         String   @default("en") // en, hi, ta, te
-  plan             Plan     @default(FREE)
+  language         String    @default("en") // en, hi, ta, te
+  plan             Plan      @default(FREE)
   planExpiry       DateTime?
   stripeCustomerId String?
+  referralCode     String?   @unique
+  referredByCode   String?
 
   integrations      Integration[]
   workflows         Workflow[]
   executions        Execution[]
+  gstClients        GstClient[]
+  gstPeriods        GstPeriod[]
+  gstDocuments      GstDocument[]
+  gstExtractions    GstInvoiceExtraction[]
+  gstReminderDrafts GstReminderDraft[]
+  gstReviewNotes    GstReviewNote[]
+  gstAuditLogs      GstAuditLog[]
 
   tasksUsedThisMonth Int      @default(0)
   tasksResetAt       DateTime @default(now())
@@ -72,7 +140,7 @@ model Integration {
   type        IntegrationType
   name        String
   credentials Json
-  isActive    Boolean @default(true)
+  isActive    Boolean         @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,7 +158,7 @@ model Workflow {
   description String?
   isActive    Boolean @default(false)
 
-  trigger Json   // { type: "razorpay.payment_captured", integrationId: "xxx" }
+  trigger Json // { type: "razorpay.payment_captured", integrationId: "xxx" }
   steps   Json[] // Array of action steps
 
   executions Execution[]
@@ -113,7 +181,7 @@ model Execution {
   status      ExecutionStatus
   triggerData Json
   stepResults Json[]
-  error       String? @db.Text
+  error       String?         @db.Text
 
   tasksConsumed Int @default(0)
 
@@ -127,7 +195,7 @@ model Execution {
 }
 
 model Template {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   name          String
   nameHi        String?
   description   String
@@ -146,6 +214,239 @@ model Template {
   @@index([category])
   @@index([isPopular])
   @@map("templates")
+}
+
+model GstClient {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  businessName String
+  gstin        String?
+  contactName  String?
+  email        String?
+  phone        String?
+  state        String?
+  tags         String[] @default([])
+  isDemo       Boolean  @default(false)
+
+  periods        GstPeriod[]
+  documents      GstDocument[]
+  extractions    GstInvoiceExtraction[]
+  checklistItems GstChecklistItem[]
+  reminderDrafts GstReminderDraft[]
+  reviewNotes    GstReviewNote[]
+  auditLogs      GstAuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, gstin])
+  @@map("gst_clients")
+}
+
+model GstPeriod {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String
+  client   GstClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  label         String
+  month         Int
+  financialYear String
+  dueDate       DateTime?
+  isClosed      Boolean   @default(false)
+
+  documents      GstDocument[]
+  extractions    GstInvoiceExtraction[]
+  checklistItems GstChecklistItem[]
+  reminderDrafts GstReminderDraft[]
+  reviewNotes    GstReviewNote[]
+  auditLogs      GstAuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, financialYear, month])
+  @@index([userId])
+  @@index([userId, clientId])
+  @@map("gst_periods")
+}
+
+model GstDocument {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String
+  client   GstClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  periodId String
+  period   GstPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  documentType GstDocumentType
+  status       GstDocumentStatus @default(UPLOADED)
+
+  originalName  String
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  storageBucket String?
+  storagePath   String?
+
+  extractionJobId String?
+  error           String? @db.Text
+  isDemo          Boolean @default(false)
+
+  extractions GstInvoiceExtraction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clientId, periodId])
+  @@index([status])
+  @@map("gst_documents")
+}
+
+model GstInvoiceExtraction {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId     String
+  client       GstClient   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  periodId     String
+  period       GstPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  sourceFileId String
+  sourceFile   GstDocument @relation(fields: [sourceFileId], references: [id], onDelete: Cascade)
+
+  invoiceNumber String?
+  invoiceDate   DateTime?
+  supplierName  String?
+  supplierGstin String?
+  customerName  String?
+  customerGstin String?
+  placeOfSupply String?
+
+  taxableValue Decimal? @db.Decimal(14, 2)
+  cgst         Decimal? @db.Decimal(14, 2)
+  sgst         Decimal? @db.Decimal(14, 2)
+  igst         Decimal? @db.Decimal(14, 2)
+  totalAmount  Decimal? @db.Decimal(14, 2)
+
+  documentType    GstDocumentType
+  confidenceScore Decimal?        @db.Decimal(5, 2)
+  reviewStatus    GstReviewStatus @default(NEEDS_REVIEW)
+  rawData         Json?
+  correctionLog   Json?
+  isDemo          Boolean         @default(false)
+
+  reviewNotes GstReviewNote[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  reviewedAt  DateTime?
+  correctedAt DateTime?
+
+  @@index([userId])
+  @@index([clientId, periodId])
+  @@index([sourceFileId])
+  @@index([reviewStatus])
+  @@map("gst_invoice_extractions")
+}
+
+model GstChecklistItem {
+  id       String    @id @default(cuid())
+  userId   String
+  clientId String
+  client   GstClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  periodId String
+  period   GstPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  status      GstChecklistStatus @default(MISSING)
+  dueDate     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clientId, periodId])
+  @@index([status])
+  @@map("gst_checklist_items")
+}
+
+model GstReminderDraft {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String
+  client   GstClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  periodId String
+  period   GstPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  channel   GstReminderChannel
+  recipient String?
+  subject   String?
+  body      String
+  status    GstReminderStatus  @default(DRAFT)
+  variables Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clientId, periodId])
+  @@index([status])
+  @@map("gst_reminder_drafts")
+}
+
+model GstReviewNote {
+  id           String                @id @default(cuid())
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId     String
+  client       GstClient             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  periodId     String
+  period       GstPeriod             @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  extractionId String?
+  extraction   GstInvoiceExtraction? @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+
+  note       String  @db.Text
+  targetType String?
+  targetId   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([clientId, periodId])
+  @@index([extractionId])
+  @@map("gst_review_notes")
+}
+
+model GstAuditLog {
+  id       String     @id @default(cuid())
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId String?
+  client   GstClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  periodId String?
+  period   GstPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
+
+  action     GstAuditAction
+  entityType String
+  entityId   String?
+  message    String
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([clientId, periodId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("gst_audit_logs")
 }
 
 // NextAuth models

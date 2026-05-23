@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { decryptConnectionCredentials } from "@/lib/connection-service";
 import { prisma } from "@/lib/prisma";
 import { executeWorkflowsForTriggerTypes } from "@/lib/automation-engine";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 function timingSafeEqual(a: string, b: string) {
   const ab = Buffer.from(a, "utf8");
@@ -12,6 +13,9 @@ function timingSafeEqual(a: string, b: string) {
 }
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.webhook);
+  if (limited) return limited;
+
   // Minimal shared-secret verification for missed call webhooks.
   // Exotel can be wired to include ?secret=... in webhook URL.
   const { searchParams } = new URL(req.url);

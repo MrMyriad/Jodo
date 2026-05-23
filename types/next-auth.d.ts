@@ -6,10 +6,12 @@ declare module "next-auth" {
     user: DefaultSession["user"] & {
       id: string;
       plan: Plan;
+      language?: string;
     };
   }
 
   interface User {
     plan: Plan;
+    language?: string;
   }
 }

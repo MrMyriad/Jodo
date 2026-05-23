@@ -1,18 +1,20 @@
 import { IntegrationType } from "@prisma/client";
 import { z } from "zod";
 import { decryptCredentials, encryptCredentials } from "@/lib/credentials";
+import { isMockIntegrationModeEnabled } from "@/lib/integrations/mock-mode";
 
 type JsonObject = Record<string, unknown>;
 
 const whatsappCredentialsSchema = z.object({
   phoneNumberId: z.string().trim().min(3, "Phone number ID is required."),
   accessToken: z.string().trim().min(10, "Access token is required."),
+  businessAccountId: z.string().trim().min(3).optional(),
 });
 
 const razorpayCredentialsSchema = z.object({
   keyId: z.string().trim().min(4, "Razorpay key ID is required."),
   keySecret: z.string().trim().min(8, "Razorpay key secret is required."),
-  webhookSecret: z.string().trim().min(8, "Webhook secret is required."),
+  webhookSecret: z.string().trim().min(8).optional().or(z.literal("")),
 });
 
 const googleSheetsCredentialsSchema = z.object({
@@ -24,6 +26,7 @@ const googleSheetsCredentialsSchema = z.object({
 const zohoBooksCredentialsSchema = z.object({
   accessToken: z.string().trim().min(10, "Zoho access token is required."),
   organizationId: z.string().trim().min(3, "Zoho organizationId is required."),
+  apiDomain: z.string().trim().url().optional(),
 });
 
 const instagramCredentialsSchema = z.object({
@@ -83,10 +86,20 @@ export function parseConnectionPayload(
 
   if (parsed.type === "RAZORPAY") {
     const credentials = razorpayCredentialsSchema.parse(parsed.credentials);
+    const webhookSecret =
+      typeof credentials.webhookSecret === "string" &&
+      credentials.webhookSecret.trim().length > 0
+        ? credentials.webhookSecret.trim()
+        : undefined;
+
     return {
       type: parsed.type,
       name: parsed.name,
-      credentials,
+      credentials: {
+        keyId: credentials.keyId,
+        keySecret: credentials.keySecret,
+        ...(webhookSecret ? { webhookSecret } : {}),
+      },
     };
   }
 
@@ -128,6 +141,18 @@ export function decryptConnectionCredentials(credentials: unknown): JsonObject {
 }
 
 async function testWhatsAppConnection(credentials: JsonObject) {
+  if (isMockIntegrationModeEnabled()) {
+    const parsed = whatsappCredentialsSchema.parse(credentials);
+    return {
+      ok: true,
+      details: {
+        phoneNumberId: parsed.phoneNumberId,
+        displayPhoneNumber: "mock-display-number",
+        mock: true,
+      },
+    };
+  }
+
   const parsed = whatsappCredentialsSchema.parse(credentials);
   const url = `https://graph.facebook.com/v18.0/${encodeURIComponent(parsed.phoneNumberId)}?fields=id,display_phone_number`;
   const response = await fetch(url, {
@@ -154,6 +179,18 @@ async function testWhatsAppConnection(credentials: JsonObject) {
 }
 
 async function testRazorpayConnection(credentials: JsonObject) {
+  if (isMockIntegrationModeEnabled()) {
+    const parsed = razorpayCredentialsSchema.parse(credentials);
+    return {
+      ok: true,
+      details: {
+        itemCount: 1,
+        keyId: parsed.keyId,
+        mock: true,
+      },
+    };
+  }
+
   const parsed = razorpayCredentialsSchema.parse(credentials);
   const token = Buffer.from(
     `${parsed.keyId}:${parsed.keySecret}`,
@@ -182,6 +219,17 @@ async function testRazorpayConnection(credentials: JsonObject) {
 }
 
 async function testGoogleSheetsConnection(credentials: JsonObject) {
+  if (isMockIntegrationModeEnabled()) {
+    const parsed = googleSheetsCredentialsSchema.parse(credentials);
+    return {
+      ok: true,
+      details: {
+        range: `${parsed.sheetName}!A1:A1`,
+        mock: true,
+      },
+    };
+  }
+
   const parsed = googleSheetsCredentialsSchema.parse(credentials);
   const encodedRange = encodeURIComponent(`${parsed.sheetName}!A1:A1`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${parsed.spreadsheetId}/values/${encodedRange}`;

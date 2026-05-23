@@ -14,6 +14,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type RazorpayConnectionResponse = {
+  error?: string;
+  verificationResult?: {
+    webhookCreated?: {
+      id?: string;
+      webhook_id?: string;
+    };
+  };
+};
+
 export default function RazorpayConnectPage() {
   const [keyId, setKeyId] = useState("");
   const [keySecret, setKeySecret] = useState("");
@@ -29,7 +39,13 @@ export default function RazorpayConnectPage() {
     return `${window.location.origin}/api/webhooks/razorpay`;
   }, []);
 
-  const canSubmit = keyId.trim() && keySecret.trim() && webhookSecret.trim();
+  const canSubmit = keyId.trim() && keySecret.trim();
+
+  const buildCredentials = () => ({
+    keyId: keyId.trim(),
+    keySecret: keySecret.trim(),
+    ...(webhookSecret.trim() ? { webhookSecret: webhookSecret.trim() } : {}),
+  });
 
   const testConnection = async () => {
     setIsTesting(true);
@@ -42,14 +58,11 @@ export default function RazorpayConnectPage() {
         body: JSON.stringify({
           type: "RAZORPAY",
           name,
-          credentials: { keyId, keySecret, webhookSecret },
+          credentials: buildCredentials(),
           testBeforeSave: true,
         }),
       });
-      const data = (await res.json()) as {
-        error?: string;
-        verificationResult?: any;
-      };
+      const data = (await res.json()) as RazorpayConnectionResponse;
       if (!res.ok) {
         setError(data.error ?? "Test failed.");
         return;
@@ -61,10 +74,10 @@ export default function RazorpayConnectPage() {
           data.verificationResult.webhookCreated.webhook_id ??
           null;
         setMessage(
-          `✓ Connected to Razorpay — webhook created${id ? ` (id: ${id})` : ""}`,
+          `Connected to Razorpay. Webhook created${id ? ` (id: ${id})` : ""}.`,
         );
       } else {
-        setMessage("✓ Connected to Razorpay");
+        setMessage("Connected to Razorpay.");
       }
     } catch {
       setError("Network error testing Razorpay.");
@@ -84,14 +97,11 @@ export default function RazorpayConnectPage() {
         body: JSON.stringify({
           type: "RAZORPAY",
           name,
-          credentials: { keyId, keySecret, webhookSecret },
+          credentials: buildCredentials(),
           testBeforeSave: true,
         }),
       });
-      const data = (await res.json()) as {
-        error?: string;
-        verificationResult?: any;
-      };
+      const data = (await res.json()) as RazorpayConnectionResponse;
       if (!res.ok) {
         setError(data.error ?? "Save failed.");
         return;
@@ -103,12 +113,10 @@ export default function RazorpayConnectPage() {
           data.verificationResult.webhookCreated.webhook_id ??
           null;
         setMessage(
-          `✓ Razorpay saved — webhook created${id ? ` (id: ${id})` : ""}.`,
+          `Razorpay saved. Webhook created${id ? ` (id: ${id})` : ""}.`,
         );
       } else {
-        setMessage(
-          "✓ Razorpay saved. Add the webhook URL in your Razorpay dashboard.",
-        );
+        setMessage("Razorpay saved. Add the webhook URL in your dashboard.");
       }
     } catch {
       setError("Network error saving Razorpay.");
@@ -128,7 +136,7 @@ export default function RazorpayConnectPage() {
         </p>
         <h1 className="text-3xl font-semibold">Connect Razorpay</h1>
         <p className="text-muted-foreground">
-          Add API keys once. AutomateDesi will verify and save securely.
+          Add API keys once. JODO verifies and saves them securely.
         </p>
       </header>
 
@@ -168,20 +176,24 @@ export default function RazorpayConnectPage() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="webhook-secret">Webhook Secret</Label>
+            <Label htmlFor="webhook-secret">Webhook Secret (optional)</Label>
             <Input
               id="webhook-secret"
               type="password"
               value={webhookSecret}
               onChange={(e) => setWebhookSecret(e.target.value)}
-              placeholder="whsec_..."
+              placeholder="Leave empty to auto-create webhook secret"
             />
+            <p className="text-xs text-muted-foreground">
+              If left blank, JODO will create a webhook and generate a
+              secret for you.
+            </p>
           </div>
 
           <div className="rounded-lg border bg-muted/40 p-4">
             <p className="text-sm font-medium">Webhook URL</p>
             <p className="mt-1 break-all text-sm text-muted-foreground">
-              {webhookUrl || "—"}
+              {webhookUrl || "-"}
             </p>
             <a
               href="https://dashboard.razorpay.com/app/webhooks"

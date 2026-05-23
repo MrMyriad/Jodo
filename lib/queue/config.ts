@@ -64,6 +64,17 @@ export function getDeadLetterQueueName(): string {
   );
 }
 
+export function getGstExtractionQueueName(): string {
+  return process.env.GST_EXTRACTION_QUEUE_NAME?.trim() || "gst-invoice-extraction";
+}
+
+export function getWorkerHeartbeatKey(): string {
+  return (
+    process.env.WORKFLOW_WORKER_HEARTBEAT_KEY?.trim() ||
+    `${getWorkflowQueueName()}:worker:heartbeat`
+  );
+}
+
 export function getQueueAttempts(): number {
   return parsePositiveInteger(process.env.WORKFLOW_QUEUE_ATTEMPTS, 5);
 }

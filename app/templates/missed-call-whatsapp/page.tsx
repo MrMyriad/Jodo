@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -24,10 +24,10 @@ export default function MissedCallWhatsAppTemplatePage() {
   const [isActivating, setIsActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState(
-    "Missed Call → WhatsApp Auto Reply",
+    "Missed Call -> WhatsApp Auto Reply",
   );
   const [messageTemplate, setMessageTemplate] = useState(
-    "Hi! Sorry we missed your call. Here’s our menu/catalog: {{menuUrl}}",
+    "Hi! Sorry we missed your call. Here is our menu/catalog: {{menuUrl}}",
   );
 
   const canContinue = useMemo(() => {
@@ -71,13 +71,13 @@ export default function MissedCallWhatsAppTemplatePage() {
           <Link href="/templates" className="hover:underline">
             Templates
           </Link>{" "}
-          / Missed Call → WhatsApp
+          / Missed Call -&gt; WhatsApp
         </p>
         <h1 className="text-3xl font-semibold">
-          Missed Call → Auto WhatsApp Reply
+          Missed Call -&gt; Auto WhatsApp Reply
         </h1>
         <p className="text-muted-foreground">
-          When you miss a call, instantly WhatsApp them your menu/catalog link.
+          When you miss a call, instantly WhatsApp menu or catalog details.
         </p>
       </header>
 
@@ -96,7 +96,7 @@ export default function MissedCallWhatsAppTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">Exotel (Missed calls)</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Exotel will call our webhook instantly when you miss a call.
+                Exotel sends webhook events when you miss customer calls.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
@@ -113,16 +113,14 @@ export default function MissedCallWhatsAppTemplatePage() {
             <div className="rounded-lg border p-4">
               <p className="font-medium">WhatsApp Business</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                We’ll send a WhatsApp message immediately after the missed call.
+                We send WhatsApp immediately after missed call events.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild>
                   <Link href="/connections">Connect WhatsApp</Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link href="/integrations/whatsapp/connect">
-                    Guided setup
-                  </Link>
+                  <Link href="/integrations/whatsapp/connect">Guided setup</Link>
                 </Button>
               </div>
             </div>
@@ -155,15 +153,13 @@ export default function MissedCallWhatsAppTemplatePage() {
               <div className="rounded-lg border p-4">
                 <p className="font-medium">Ready to activate</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Once live, every missed call webhook triggers WhatsApp
-                  instantly.
+                  Missed call webhook events will trigger WhatsApp instantly.
                 </p>
               </div>
-              <Button onClick={activate} disabled={isActivating}>
+              <Button onClick={() => void activate()} disabled={isActivating}>
                 {isActivating ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />{" "}
-                    Activating...
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Activating...
                   </>
                 ) : (
                   "Activate automation"
@@ -189,9 +185,7 @@ export default function MissedCallWhatsAppTemplatePage() {
 
           {error ? (
             <Card className="border-error/30 bg-error/5">
-              <CardContent className="p-4 text-sm text-error">
-                {error}
-              </CardContent>
+              <CardContent className="p-4 text-sm text-error">{error}</CardContent>
             </Card>
           ) : null}
         </CardContent>

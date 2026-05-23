@@ -8,6 +8,7 @@ import {
   getQueueRetentionFail,
   getWorkflowQueueName,
 } from "@/lib/queue/config";
+import { makeBullMqSafeJobId } from "@/lib/queue/job-id";
 import { getQueueRedisConnection } from "@/lib/queue/redis";
 
 export type WorkflowExecutionJobData = {
@@ -87,9 +88,12 @@ export async function enqueueWorkflowExecutionJob(
   options?: JobsOptions,
 ) {
   const queue = getWorkflowQueue();
+  const rawJobId = options?.jobId?.toString() ?? `workflow-${data.executionId}-${Date.now()}`;
+  const jobId = makeBullMqSafeJobId(rawJobId);
+
   return queue.add("workflow-execution", data, {
-    jobId: `${data.executionId}:${Date.now()}`,
     ...options,
+    jobId,
   });
 }
 

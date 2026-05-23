@@ -41,7 +41,11 @@ export function AuthForm({ mode, callbackUrl }: AuthFormProps) {
 
   const hasGoogle = Boolean(providers?.google);
   const hasEmail = Boolean(providers?.email);
-  const hasDevCredentials = Boolean(providers?.["dev-email"] || providers?.["setup-required"]);
+  const hasDevCredentials = Boolean(
+    providers?.["dev-email"] || providers?.["setup-required"],
+  );
+  const isLocalDevEmail = hasDevCredentials && !hasEmail;
+  const providersLoading = providers === null;
 
   const submitEmailMagicLink = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,8 +88,14 @@ export function AuthForm({ mode, callbackUrl }: AuthFormProps) {
           return;
         }
 
-        // credentials signIn does not automatically redirect when using redirect:false
-        router.push(callbackUrl);
+        // Credentials sign-in sets the session cookie, then a hard navigation
+        // avoids stale app-router state during local audit/dev reloads.
+        window.location.assign(callbackUrl);
+        return;
+      }
+
+      if (providersLoading) {
+        setError("Sign-in options are still loading. Please try again in a moment.");
         return;
       }
 
@@ -116,12 +126,23 @@ export function AuthForm({ mode, callbackUrl }: AuthFormProps) {
 
   const title =
     mode === "signin"
-      ? "Sign in to AutomateDesi"
-      : "Create your AutomateDesi account";
+      ? "Sign in to JODO"
+      : "Create your JODO account";
   const description =
     mode === "signin"
-      ? "Use Google or a magic link to access your dashboard."
+      ? isLocalDevEmail
+        ? "Local audit mode is enabled. Enter the audit email to access the dashboard."
+        : "Use Google or a magic link to access your dashboard."
       : "Start free and automate WhatsApp, Instagram, and payment workflows.";
+  const emailButtonLabel = providersLoading
+    ? "Loading sign-in..."
+    : isLoading
+      ? isLocalDevEmail
+        ? "Signing in..."
+        : "Sending..."
+      : isLocalDevEmail
+        ? "Continue with dev email"
+        : "Send Magic Link";
 
   return (
     <Card className="w-full max-w-md">
@@ -144,17 +165,24 @@ export function AuthForm({ mode, callbackUrl }: AuthFormProps) {
             <Input
               id="email"
               type="email"
-              placeholder="you@business.com"
+              placeholder={isLocalDevEmail ? "audit@jodo.local" : "you@business.com"}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
             />
           </div>
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Sending..." : "Send Magic Link"}
+          <Button type="submit" disabled={isLoading || providersLoading}>
+            {emailButtonLabel}
           </Button>
         </form>
+
+        {isLocalDevEmail ? (
+          <p className="text-xs text-muted-foreground">
+            Audit login: use <span className="font-medium text-foreground">audit@jodo.local</span>.
+            No password required.
+          </p>
+        ) : null}
 
         {feedback ? <p className="text-sm text-success">{feedback}</p> : null}
         {error ? <p className="text-sm text-error">{error}</p> : null}

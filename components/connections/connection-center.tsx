@@ -351,10 +351,10 @@ export function ConnectionCenter({
 
           return (
             <Card key={integration.type}>
-              <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <div className="flex gap-3">
-                  <p className="text-3xl">{integration.icon}</p>
-                  <div className="flex flex-col gap-1">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 gap-3">
+                  <p className="shrink-0 text-3xl">{integration.icon}</p>
+                  <div className="min-w-0 flex flex-col gap-1">
                     <CardTitle className="text-lg">
                       {integration.title}
                     </CardTitle>
@@ -362,15 +362,17 @@ export function ConnectionCenter({
                   </div>
                 </div>
                 {connected ? (
-                  <Badge className="bg-success text-white hover:bg-success">
+                  <Badge className="w-fit shrink-0 bg-success text-white hover:bg-success">
                     <CheckCircle2 className="mr-1 size-3.5" />
                     Connected
                   </Badge>
                 ) : (
-                  <Badge variant="outline">Not Connected</Badge>
+                  <Badge variant="outline" className="w-fit shrink-0">
+                    Not Connected
+                  </Badge>
                 )}
               </CardHeader>
-              <CardFooter className="flex items-center justify-between gap-3">
+              <CardFooter className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
                   {activeCount} active connection(s)
                 </p>
@@ -415,8 +417,8 @@ export function ConnectionCenter({
           <div className="flex flex-col gap-3">
             {connections.map((connection) => (
               <Card key={connection.id}>
-                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-                  <div className="flex flex-col gap-1">
+                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex flex-col gap-1">
                     <p className="font-medium">{connection.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {connection.type.replaceAll("_", " ")}
@@ -429,7 +431,7 @@ export function ConnectionCenter({
                       })}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
                     <Button
                       variant="outline"
                       size="sm"
@@ -489,7 +491,7 @@ export function ConnectionCenter({
               Connect {selectedIntegration?.title ?? "integration"}
             </DialogTitle>
             <DialogDescription>
-              Add credentials once. AutomateDesi will verify and save them
+              Add credentials once. JODO will verify and save them
               securely.
             </DialogDescription>
           </DialogHeader>

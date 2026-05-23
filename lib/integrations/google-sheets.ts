@@ -1,3 +1,5 @@
+import { isMockIntegrationModeEnabled } from "@/lib/integrations/mock-mode";
+
 type SheetsConfig = {
   accessToken: string;
   spreadsheetId: string;
@@ -5,6 +7,15 @@ type SheetsConfig = {
 };
 
 export async function appendToSheet(config: SheetsConfig, values: unknown[][]) {
+  if (isMockIntegrationModeEnabled()) {
+    return {
+      mock: true,
+      spreadsheetId: config.spreadsheetId,
+      sheetName: config.sheetName,
+      rowsAppended: values.length,
+    };
+  }
+
   const encodedRange = encodeURIComponent(`${config.sheetName}!A1`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.spreadsheetId}/values/${encodedRange}:append?valueInputOption=USER_ENTERED`;
 

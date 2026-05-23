@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useOnboardingStore } from "@/lib/stores/onboarding-store";
 
 const businessTypes = ["D2C", "Services", "Agency", "Other"] as const;
 const automationGoals = [
@@ -22,10 +23,15 @@ const firstConnections = ["WhatsApp Business", "Google Sheets"] as const;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [businessType, setBusinessType] = useState<string | null>(null);
-  const [goal, setGoal] = useState<string | null>(null);
-  const [connection, setConnection] = useState<string | null>(null);
+  const step = useOnboardingStore((state) => state.step);
+  const businessType = useOnboardingStore((state) => state.businessType);
+  const goal = useOnboardingStore((state) => state.goal);
+  const connection = useOnboardingStore((state) => state.connection);
+  const setStep = useOnboardingStore((state) => state.setStep);
+  const setBusinessType = useOnboardingStore((state) => state.setBusinessType);
+  const setGoal = useOnboardingStore((state) => state.setGoal);
+  const setConnection = useOnboardingStore((state) => state.setConnection);
+  const reset = useOnboardingStore((state) => state.reset);
 
   const canProceed = useMemo(() => {
     if (step === 1) return Boolean(businessType);
@@ -36,26 +42,30 @@ export default function OnboardingPage() {
 
   const handleContinue = () => {
     if (step < 3) {
-      setStep((current) => current + 1);
+      setStep((step + 1) as 1 | 2 | 3);
       return;
     }
 
-    const searchParams = useSearchParams();
-    const templateKey = searchParams?.get("template");
+    const templateKey =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("template")
+        : null;
     if (templateKey) {
       // map underscore template keys to hyphenated page slugs
       const slug = templateKey.replace(/_/g, "-");
+      reset();
       router.push(`/templates/${encodeURIComponent(slug)}?fromOnboarding=1`);
       return;
     }
 
+    reset();
     router.push("/dashboard");
   };
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-10 md:px-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold">Welcome to AutomateDesi</h1>
+        <h1 className="text-3xl font-semibold">Welcome to JODO</h1>
         <p className="text-muted-foreground">
           Complete your 3-step setup. It takes less than two minutes.
         </p>
@@ -120,7 +130,7 @@ export default function OnboardingPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setStep((current) => Math.max(1, current - 1))}
+              onClick={() => setStep((Math.max(1, step - 1) as 1 | 2 | 3))}
               disabled={step === 1}
             >
               Back

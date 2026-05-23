@@ -11,6 +11,7 @@ import {
 import { createRazorpayWebhook } from "@/lib/integrations/razorpay";
 import { prisma } from "@/lib/prisma";
 import { toPrismaJson } from "@/lib/prisma-json";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 const createConnectionRequestSchema = z.object({
   type: z.string().min(1),
@@ -43,6 +44,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.connectionWrite);
+  if (limited) return limited;
+
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {

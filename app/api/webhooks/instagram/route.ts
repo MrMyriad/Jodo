@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { executeWorkflowsForTriggerTypes } from "@/lib/automation-engine";
 import { extractIndianPhoneNumber } from "@/lib/phone";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 // Meta webhook verification
 export async function GET(req: Request) {
@@ -41,6 +42,9 @@ type InstagramWebhookPayload = {
 };
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.webhook);
+  if (limited) return limited;
+
   let payload: InstagramWebhookPayload;
   try {
     payload = (await req.json()) as InstagramWebhookPayload;

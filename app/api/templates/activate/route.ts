@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toPrismaJson } from "@/lib/prisma-json";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 const activateSchema = z.object({
   templateKey: z.enum([
@@ -21,7 +22,7 @@ function templateDefinition(
 ) {
   if (templateKey === "razorpay_whatsapp_invoice") {
     return {
-      defaultName: "Razorpay Payment → Zoho Invoice → WhatsApp Receipt",
+      defaultName: "Razorpay Payment -> Zoho Invoice -> WhatsApp Receipt",
       trigger: { type: "razorpay.payment_captured" },
       steps: [
         {
@@ -36,7 +37,9 @@ function templateDefinition(
           config: {
             sendTo: "trigger",
             message:
-              "Hi {{customer.name}}, your payment of ₹{{amount}} is received. Invoice: {{step0.invoiceUrl}}",
+              "Hi {{customer.name}}, your payment of Rs {{amount}} is received. Invoice: {{step0.invoiceUrl}}",
+            attachInvoicePdfFromStep: 0,
+            documentFilename: "invoice.pdf",
           },
         },
       ],
@@ -45,22 +48,29 @@ function templateDefinition(
 
   if (templateKey === "instagram_dm_whatsapp_followup") {
     return {
-      defaultName: "Instagram DM → WhatsApp Follow-up → Save Lead",
+      defaultName: "Instagram DM -> WhatsApp Follow-up -> Save Lead",
       trigger: { type: "instagram.dm_received" },
       steps: [
         {
           type: "instagram_reply",
           config: {
             message:
-              "Thanks! Reply with your WhatsApp number (10 digits) and we’ll send the catalog instantly.",
+              "Thanks! Reply with your WhatsApp number (10 digits) and we will send the catalog instantly.",
           },
         },
         {
           type: "whatsapp_send",
           config: {
             sendTo: "trigger",
-            message: "Hi! Here’s our catalog: {{catalogUrl}}",
+            message: "Hi! Here is our catalog: {{catalogUrl}}",
             onMissingPhone: "skip",
+          },
+        },
+        {
+          type: "instagram_reply",
+          config: {
+            message:
+              "We attempted to send your catalog on WhatsApp. If you did not receive it, send your WhatsApp number again.",
           },
         },
         {
@@ -75,7 +85,7 @@ function templateDefinition(
   }
 
   return {
-    defaultName: "Missed Call → WhatsApp Auto Reply",
+    defaultName: "Missed Call -> WhatsApp Auto Reply",
     trigger: { type: "exotel.missed_call" },
     steps: [
       {
@@ -83,7 +93,7 @@ function templateDefinition(
         config: {
           sendTo: "trigger",
           message:
-            "Hi {{customer.name}}, sorry we missed your call. Here’s our menu: {{menuUrl}}",
+            "Hi {{customer.name}}, sorry we missed your call. Here is our menu: {{menuUrl}}",
         },
       },
     ],
@@ -91,6 +101,9 @@ function templateDefinition(
 }
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.workflowWrite);
+  if (limited) return limited;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -114,32 +127,24 @@ export async function POST(req: Request) {
   const def = templateDefinition(parsed.data.templateKey);
   const name = parsed.data.name?.trim() || def.defaultName;
 
-  const steps =
-    parsed.data.templateKey === "razorpay_whatsapp_invoice" ||
-    parsed.data.templateKey === "instagram_dm_whatsapp_followup" ||
-    parsed.data.templateKey === "missed_call_whatsapp"
-      ? def.steps.map((step) => {
-          if (step.type === "whatsapp_send" && parsed.data.messageTemplate) {
-            return {
-              ...step,
-              config: { ...step.config, message: parsed.data.messageTemplate },
-            };
-          }
-          if (
-            step.type === "instagram_reply" &&
-            parsed.data.instagramReplyTemplate
-          ) {
-            return {
-              ...step,
-              config: {
-                ...step.config,
-                message: parsed.data.instagramReplyTemplate,
-              },
-            };
-          }
-          return step;
-        })
-      : def.steps;
+  const steps = def.steps.map((step) => {
+    if (step.type === "whatsapp_send" && parsed.data.messageTemplate) {
+      return {
+        ...step,
+        config: { ...step.config, message: parsed.data.messageTemplate },
+      };
+    }
+    if (step.type === "instagram_reply" && parsed.data.instagramReplyTemplate) {
+      return {
+        ...step,
+        config: {
+          ...step.config,
+          message: parsed.data.instagramReplyTemplate,
+        },
+      };
+    }
+    return step;
+  });
 
   const workflow = await prisma.workflow.create({
     data: {

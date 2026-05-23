@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { enqueueWorkflowExecution } from "@/lib/automation-engine";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 type RouteParams = {
   params: {
@@ -78,6 +79,9 @@ function sampleTriggerData(triggerType: string): Record<string, unknown> {
 }
 
 export async function POST(req: Request, { params }: RouteParams) {
+  const limited = await enforceRateLimit(req, rateLimitPolicies.workflowExecute);
+  if (limited) return limited;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

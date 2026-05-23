@@ -2,8 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutTemplate, Link2, Settings, Workflow } from "lucide-react";
+import type { ComponentType } from "react";
+import {
+  CreditCard,
+  FileText,
+  Home,
+  LayoutTemplate,
+  Link2,
+  Settings,
+  Workflow,
+} from "lucide-react";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Badge } from "@/components/ui/badge";
+import { t, type TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 
@@ -11,15 +22,22 @@ type SidebarNavProps = {
   userName: string;
   userEmail: string;
   plan: string;
+  language: string;
 };
 
 const navItems = [
-  { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/workflows", label: "Workflows", icon: Workflow },
-  { href: "/templates", label: "Templates", icon: LayoutTemplate },
-  { href: "/connections", label: "Connect", icon: Link2 },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+  { href: "/dashboard", labelKey: "nav.home", icon: Home },
+  { href: "/workflows", labelKey: "nav.workflows", icon: Workflow },
+  { href: "/templates", labelKey: "nav.templates", icon: LayoutTemplate },
+  { href: "/connections", labelKey: "nav.connect", icon: Link2 },
+  { href: "/gst-desk", labelKey: "nav.gstDesk", icon: FileText },
+  { href: "/settings", labelKey: "nav.settings", icon: Settings },
+  { href: "/pricing", labelKey: "nav.pricing", icon: CreditCard },
+] as const satisfies ReadonlyArray<{
+  href: string;
+  labelKey: TranslationKey;
+  icon: ComponentType<{ className?: string }>;
+}>;
 
 function isNavItemActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") {
@@ -29,7 +47,12 @@ function isNavItemActive(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
-export function SidebarNav({ userName, userEmail, plan }: SidebarNavProps) {
+export function SidebarNav({
+  userName,
+  userEmail,
+  plan,
+  language,
+}: SidebarNavProps) {
   const pathname = usePathname();
 
   return (
@@ -37,13 +60,13 @@ export function SidebarNav({ userName, userEmail, plan }: SidebarNavProps) {
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-background md:flex">
         <div className="flex h-16 items-center border-b px-6">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="text-lg font-semibold">AutomateDesi</span>
+            <span className="text-lg font-semibold">JODO</span>
             <Badge variant="secondary">{plan}</Badge>
           </Link>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-4">
-          {navItems.map(({ href, label, icon: Icon }) => (
+          {navItems.map(({ href, labelKey, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -55,7 +78,7 @@ export function SidebarNav({ userName, userEmail, plan }: SidebarNavProps) {
               )}
             >
               <Icon className="mr-2 size-4" />
-              {label}
+              {t(language, labelKey)}
             </Link>
           ))}
         </nav>
@@ -63,17 +86,18 @@ export function SidebarNav({ userName, userEmail, plan }: SidebarNavProps) {
         <div className="flex flex-col gap-2 border-t p-4">
           <p className="truncate text-sm font-medium">{userName}</p>
           <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
+          <LanguageSwitcher initialLanguage={language} />
           <SignOutButton />
         </div>
       </aside>
 
-      <div className="border-b bg-background px-4 py-3 md:hidden">
+      <div className="w-full border-b bg-background px-4 py-3 md:hidden">
         <div className="flex items-center justify-between">
-          <p className="font-semibold">AutomateDesi</p>
+          <p className="font-semibold">JODO</p>
           <Badge variant="secondary">{plan}</Badge>
         </div>
-        <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {navItems.map(({ href, label }) => (
+        <nav className="mt-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {navItems.map(({ href, labelKey }) => (
             <Link
               key={href}
               href={href}
@@ -84,10 +108,13 @@ export function SidebarNav({ userName, userEmail, plan }: SidebarNavProps) {
                   : "bg-muted text-muted-foreground",
               )}
             >
-              {label}
+              {t(language, labelKey)}
             </Link>
           ))}
         </nav>
+        <div className="mt-3">
+          <LanguageSwitcher initialLanguage={language} />
+        </div>
       </div>
     </>
   );

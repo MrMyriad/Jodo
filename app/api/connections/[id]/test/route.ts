@@ -6,6 +6,7 @@ import {
   testConnectionByType,
 } from "@/lib/connection-service";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, rateLimitPolicies } from "@/lib/rate-limit";
 
 type RouteParams = {
   params: {
@@ -14,6 +15,9 @@ type RouteParams = {
 };
 
 export async function POST(_req: Request, { params }: RouteParams) {
+  const limited = await enforceRateLimit(_req, rateLimitPolicies.connectionWrite);
+  if (limited) return limited;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

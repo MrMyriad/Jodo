@@ -1,17 +1,21 @@
 {
-  "name": "automatedesi",
+  "name": "jodo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-server.mjs",
     "worker:workflow": "tsx -r tsconfig-paths/register workers/workflow-worker.ts",
-    "build": "prisma generate && next build",
+    "test:flagship-live": "tsx -r tsconfig-paths/register scripts/simulate-flagship-webhooks.ts",
+    "build": "node scripts/guard-next-build.mjs && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "audit:stack": "tsx -r tsconfig-paths/register scripts/audit-stack.ts",
+    "recovery:inspect": "tsx -r tsconfig-paths/register scripts/recovery-inspect.ts",
+    "recovery:replay": "tsx -r tsconfig-paths/register scripts/replay-failed-execution.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -41,7 +45,6 @@
     "next-auth": "^4.24.14",
     "nodemailer": "^7.0.13",
     "posthog-js": "^1.372.2",
-    "prisma": "^5.22.0",
     "razorpay": "^2.9.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -63,6 +66,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.35",
     "postcss": "^8.5.10",
+    "prisma": "^5.22.0",
     "tailwindcss": "^3.4.19",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
