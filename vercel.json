@@ -1,22 +1,4 @@
 ﻿{
-  "crons": [
-    {
-      "path": "/api/health",
-      "schedule": "*/30 * * * *"
-    }
-  ],
-  "functions": {
-    "app/api/webhooks/*/route.ts": {
-      "maxDuration": 30
-    },
-    "app/api/workflows/*/route.ts": {
-      "maxDuration": 30
-    },
-    "app/api/gst/*/route.ts": {
-      "maxDuration": 60
-    },
-    "app/api/health/route.ts": {
-      "maxDuration": 15
-    }
-  }
+  "buildCommand": "npm run build",
+  "installCommand": "npm install"
 }
