@@ -9,7 +9,7 @@ import { type SendVerificationRequestParams } from "next-auth/providers/email";
 import EmailProvider from "next-auth/providers/email";
 import GoogleProvider from "next-auth/providers/google";
 import { sendWelcomeSequence } from "@/lib/email/sequences";
-import { getResendClient } from "@/lib/email/resend-client";
+import { getEmailFromAddress, getResendClient } from "@/lib/email/resend-client";
 import { prisma } from "@/lib/prisma";
 
 type EmailServerConfig = {
@@ -64,6 +64,10 @@ function getEmailServerConfig(): EmailServerConfig | null {
 }
 
 function getMagicLinkFromAddress(): string | undefined {
+  if (getResendClient()) {
+    return cleanEnv("RESEND_FROM_EMAIL") ?? cleanEnv("EMAIL_FROM");
+  }
+
   return cleanEnv("EMAIL_FROM") ?? cleanEnv("RESEND_FROM_EMAIL");
 }
 
@@ -182,7 +186,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 }
 
 const emailServerConfig = getEmailServerConfig();
-const magicLinkFrom = emailServerConfig?.from ?? getMagicLinkFromAddress();
+const magicLinkFrom = getResendClient()
+  ? getEmailFromAddress()
+  : emailServerConfig?.from ?? getMagicLinkFromAddress();
 
 if (emailServerConfig || (getResendClient() && magicLinkFrom)) {
   providers.push(
