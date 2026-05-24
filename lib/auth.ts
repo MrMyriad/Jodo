@@ -5,9 +5,11 @@ import { Plan } from "@prisma/client";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { type SendVerificationRequestParams } from "next-auth/providers/email";
 import EmailProvider from "next-auth/providers/email";
 import GoogleProvider from "next-auth/providers/google";
 import { sendWelcomeSequence } from "@/lib/email/sequences";
+import { getResendClient } from "@/lib/email/resend-client";
 import { prisma } from "@/lib/prisma";
 
 type EmailServerConfig = {
@@ -17,6 +19,8 @@ type EmailServerConfig = {
   password: string;
   from: string;
 };
+
+type MagicLinkTransport = "resend-api" | "smtp" | "disabled";
 
 const providers: NonNullable<NextAuthOptions["providers"]> = [];
 
@@ -59,6 +63,64 @@ function getEmailServerConfig(): EmailServerConfig | null {
   };
 }
 
+function getMagicLinkFromAddress(): string | undefined {
+  return cleanEnv("EMAIL_FROM") ?? cleanEnv("RESEND_FROM_EMAIL");
+}
+
+function getMagicLinkTransport(): MagicLinkTransport {
+  if (getResendClient()) {
+    return "resend-api";
+  }
+
+  return getEmailServerConfig() ? "smtp" : "disabled";
+}
+
+function buildMagicLinkEmail(url: string) {
+  const escapedUrl = url.replace(/"/g, "&quot;");
+
+  return {
+    subject: "Sign in to JODO",
+    text: `Sign in to JODO: ${url}\n\nThis link expires in 24 hours. If you did not request it, you can ignore this email.`,
+    html: `<div style="font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;color:#111827">
+  <h1 style="font-size:20px;margin:0 0 12px">Sign in to JODO</h1>
+  <p style="margin:0 0 20px">Use this secure magic link to access your JODO workspace.</p>
+  <p style="margin:0 0 24px">
+    <a href="${escapedUrl}" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600">Open JODO</a>
+  </p>
+  <p style="font-size:13px;color:#6b7280;margin:0">This link expires in 24 hours. If you did not request it, you can ignore this email.</p>
+</div>`,
+  };
+}
+
+async function sendResendVerificationRequest({
+  identifier,
+  url,
+  provider,
+}: SendVerificationRequestParams) {
+  const resend = getResendClient();
+  if (!resend) {
+    throw new Error("Resend API client is not configured.");
+  }
+
+  const email = buildMagicLinkEmail(url);
+  const { error } = await resend.emails.send({
+    from: provider.from,
+    to: [identifier],
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
+    tags: [{ name: "auth", value: "magic-link" }],
+  });
+
+  if (error) {
+    console.error("[auth.email] Resend magic-link send failed", {
+      message: error.message,
+      name: error.name,
+    });
+    throw new Error(error.message || "Failed to send magic link.");
+  }
+}
+
 export function logAuthConfigDiagnostics() {
   if (process.env.NODE_ENV !== "production") {
     return;
@@ -95,6 +157,7 @@ export function logAuthConfigDiagnostics() {
     smtpPasswordAliasPresent: hasEnv("SMTP_PASSWORD"),
     googleProviderEnabled: providers.some((provider) => provider.id === "google"),
     emailProviderEnabled: providers.some((provider) => provider.id === "email"),
+    magicLinkTransport: getMagicLinkTransport(),
     nextAuthUrlMatchesPublicAppUrl:
       Boolean(nextAuthUrl && publicAppUrl) &&
       nextAuthUrl?.replace(/\/+$/, "") === publicAppUrl?.replace(/\/+$/, ""),
@@ -119,21 +182,29 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 }
 
 const emailServerConfig = getEmailServerConfig();
+const magicLinkFrom = emailServerConfig?.from ?? getMagicLinkFromAddress();
 
-if (emailServerConfig) {
+if (emailServerConfig || (getResendClient() && magicLinkFrom)) {
   providers.push(
     EmailProvider({
-      server: {
-        host: emailServerConfig.host,
-        port: emailServerConfig.port,
-        secure: emailServerConfig.port === 465,
-        auth: {
-          user: emailServerConfig.user,
-          pass: emailServerConfig.password,
-        },
-      },
-      from: emailServerConfig.from,
+      ...(emailServerConfig
+        ? {
+            server: {
+              host: emailServerConfig.host,
+              port: emailServerConfig.port,
+              secure: emailServerConfig.port === 465,
+              auth: {
+                user: emailServerConfig.user,
+                pass: emailServerConfig.password,
+              },
+            },
+          }
+        : {}),
+      from: magicLinkFrom!,
       maxAge: 24 * 60 * 60,
+      ...(getResendClient()
+        ? { sendVerificationRequest: sendResendVerificationRequest }
+        : {}),
     }),
   );
 }
