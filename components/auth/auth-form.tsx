@@ -26,6 +26,7 @@ export function AuthForm({ mode, callbackUrl }: AuthFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<Record<
@@ -111,17 +112,28 @@ export function AuthForm({ mode, callbackUrl }: AuthFormProps) {
   };
 
   const signInWithGoogle = async () => {
+    if (isGoogleLoading || providersLoading) {
+      return;
+    }
+
     setError(null);
     setFeedback(null);
+    setIsGoogleLoading(true);
 
     if (!hasGoogle) {
       setError(
         "Google sign-in is not configured yet. Add Google OAuth env values first.",
       );
+      setIsGoogleLoading(false);
       return;
     }
 
-    await signIn("google", { callbackUrl });
+    try {
+      await signIn("google", { callbackUrl, redirect: true });
+    } catch {
+      setIsGoogleLoading(false);
+      setError("Unable to start Google sign-in. Please try again.");
+    }
   };
 
   const title =
@@ -151,8 +163,13 @@ export function AuthForm({ mode, callbackUrl }: AuthFormProps) {
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <Button type="button" variant="outline" onClick={signInWithGoogle}>
-          Continue with Google
+        <Button
+          type="button"
+          variant="outline"
+          onClick={signInWithGoogle}
+          disabled={providersLoading || isGoogleLoading}
+        >
+          {isGoogleLoading ? "Opening Google..." : "Continue with Google"}
         </Button>
 
         <div className="text-center text-xs text-muted-foreground">

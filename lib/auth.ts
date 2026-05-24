@@ -10,41 +10,129 @@ import GoogleProvider from "next-auth/providers/google";
 import { sendWelcomeSequence } from "@/lib/email/sequences";
 import { prisma } from "@/lib/prisma";
 
-const providers = [];
+type EmailServerConfig = {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  from: string;
+};
+
+const providers: NonNullable<NextAuthOptions["providers"]> = [];
+
+function cleanEnv(key: string): string | undefined {
+  const value = process.env[key]?.trim();
+  return value && value.length > 0 ? value : undefined;
+}
+
+function hasEnv(key: string): boolean {
+  return Boolean(cleanEnv(key));
+}
+
+function getAuthBaseUrl(): string | undefined {
+  return cleanEnv("NEXTAUTH_URL") ?? cleanEnv("NEXT_PUBLIC_APP_URL");
+}
+
+function getEmailServerConfig(): EmailServerConfig | null {
+  const host = cleanEnv("EMAIL_SERVER_HOST") ?? cleanEnv("SMTP_HOST");
+  const portValue = cleanEnv("EMAIL_SERVER_PORT") ?? cleanEnv("SMTP_PORT") ?? "587";
+  const port = Number(portValue);
+  const user = cleanEnv("EMAIL_SERVER_USER") ?? cleanEnv("SMTP_USER");
+  const password =
+    cleanEnv("EMAIL_SERVER_PASSWORD") ??
+    cleanEnv("SMTP_PASSWORD") ??
+    cleanEnv("RESEND_API_KEY");
+  const from =
+    cleanEnv("EMAIL_FROM") ??
+    cleanEnv("RESEND_FROM_EMAIL");
+
+  if (!host || !Number.isInteger(port) || port <= 0 || !user || !password || !from) {
+    return null;
+  }
+
+  return {
+    host,
+    port,
+    user,
+    password,
+    from,
+  };
+}
+
+export function logAuthConfigDiagnostics() {
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  const globalForDiagnostics = globalThis as typeof globalThis & {
+    __jodoAuthDiagnosticsLogged?: boolean;
+  };
+
+  if (globalForDiagnostics.__jodoAuthDiagnosticsLogged) {
+    return;
+  }
+
+  globalForDiagnostics.__jodoAuthDiagnosticsLogged = true;
+
+  const nextAuthUrl = cleanEnv("NEXTAUTH_URL");
+  const publicAppUrl = cleanEnv("NEXT_PUBLIC_APP_URL");
+
+  console.info("[auth.config] provider/env presence", {
+    nextAuthUrlPresent: Boolean(nextAuthUrl),
+    nextPublicAppUrlPresent: Boolean(publicAppUrl),
+    nextAuthSecretPresent: hasEnv("NEXTAUTH_SECRET"),
+    googleClientIdPresent: hasEnv("GOOGLE_CLIENT_ID"),
+    googleClientSecretPresent: hasEnv("GOOGLE_CLIENT_SECRET"),
+    emailServerHostPresent: hasEnv("EMAIL_SERVER_HOST"),
+    emailServerPortPresent: hasEnv("EMAIL_SERVER_PORT"),
+    emailServerUserPresent: hasEnv("EMAIL_SERVER_USER"),
+    emailServerPasswordPresent: hasEnv("EMAIL_SERVER_PASSWORD"),
+    emailFromPresent: hasEnv("EMAIL_FROM"),
+    resendApiKeyPresent: hasEnv("RESEND_API_KEY"),
+    resendFromEmailPresent: hasEnv("RESEND_FROM_EMAIL"),
+    smtpHostAliasPresent: hasEnv("SMTP_HOST"),
+    smtpUserAliasPresent: hasEnv("SMTP_USER"),
+    smtpPasswordAliasPresent: hasEnv("SMTP_PASSWORD"),
+    googleProviderEnabled: providers.some((provider) => provider.id === "google"),
+    emailProviderEnabled: providers.some((provider) => provider.id === "email"),
+    nextAuthUrlMatchesPublicAppUrl:
+      Boolean(nextAuthUrl && publicAppUrl) &&
+      nextAuthUrl?.replace(/\/+$/, "") === publicAppUrl?.replace(/\/+$/, ""),
+    nextAuthUrlHasTrailingSlash: Boolean(nextAuthUrl?.endsWith("/")),
+    sessionStrategy: "jwt",
+  });
+}
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          prompt: "select_account",
+          response_type: "code",
+        },
+      },
     }),
   );
 }
 
-const emailServerHost = process.env.EMAIL_SERVER_HOST;
-const emailServerPort = process.env.EMAIL_SERVER_PORT;
-const emailServerUser = process.env.EMAIL_SERVER_USER;
-const emailServerPassword = process.env.EMAIL_SERVER_PASSWORD;
-const emailFrom = process.env.EMAIL_FROM;
+const emailServerConfig = getEmailServerConfig();
 
-if (
-  emailServerHost &&
-  emailServerPort &&
-  emailServerUser &&
-  emailServerPassword &&
-  emailFrom
-) {
+if (emailServerConfig) {
   providers.push(
     EmailProvider({
       server: {
-        host: emailServerHost,
-        port: Number(emailServerPort),
+        host: emailServerConfig.host,
+        port: emailServerConfig.port,
+        secure: emailServerConfig.port === 465,
         auth: {
-          user: emailServerUser,
-          pass: emailServerPassword,
+          user: emailServerConfig.user,
+          pass: emailServerConfig.password,
         },
       },
-      from: emailFrom,
+      from: emailServerConfig.from,
       maxAge: 24 * 60 * 60,
     }),
   );
@@ -135,14 +223,11 @@ export const authOptions: NextAuthOptions = {
     process.env.NEXTAUTH_SECRET ??
     (process.env.NODE_ENV === "production" ? undefined : "dev-nextauth-secret"),
   debug: process.env.NODE_ENV !== "production",
-  // If a credentials provider is enabled (dev-only), NextAuth requires the
-  // JWT session strategy for sign-in to work. Otherwise, use database
-  // sessions backed by Prisma.
+  useSecureCookies: getAuthBaseUrl()?.startsWith("https://") ?? false,
   session: {
-    // Use JWT sessions in non-production to allow CredentialsProvider
-    // sign-in flows during local development. Production keeps database
-    // sessions backed by Prisma.
-    strategy: process.env.NODE_ENV === "production" ? "database" : "jwt",
+    // JWT sessions keep NextAuth middleware compatible in production while
+    // Prisma still stores users, linked OAuth accounts, and magic-link tokens.
+    strategy: "jwt",
   },
   pages: {
     signIn: "/auth/signin",
@@ -178,13 +263,29 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    session: async ({ session, token }: any) => {
+    session: async ({ session, token, user }: any) => {
       if (session.user) {
-        session.user.id = token.id;
-        session.user.email = session.user.email ?? token.email;
-        session.user.plan = (token.plan ?? Plan.FREE) as Plan;
+        session.user.id = token?.id ?? user?.id ?? session.user.id;
+        session.user.email = session.user.email ?? token?.email ?? user?.email;
+        session.user.plan = (token?.plan ?? user?.plan ?? Plan.FREE) as Plan;
       }
       return session;
+    },
+    redirect: async ({ url, baseUrl }) => {
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+
+      try {
+        const target = new URL(url);
+        if (target.origin === baseUrl) {
+          return url;
+        }
+      } catch {
+        // Fall through to the safe default below.
+      }
+
+      return baseUrl;
     },
   },
 };
