@@ -4,6 +4,7 @@
 import { Plan } from "@prisma/client";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { type NextAuthOptions } from "next-auth";
+import { type Adapter } from "next-auth/adapters";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { type SendVerificationRequestParams } from "next-auth/providers/email";
 import EmailProvider from "next-auth/providers/email";
@@ -34,7 +35,121 @@ type MagicLinkUrlDiagnostics = {
   rebuilt: boolean;
 };
 
+type AdapterCreateUserInput = Parameters<NonNullable<Adapter["createUser"]>>[0];
+type AdapterUpdateUserInput = Parameters<NonNullable<Adapter["updateUser"]>>[0];
+
 const providers: NonNullable<NextAuthOptions["providers"]> = [];
+
+function sanitizePrismaMessage(message: string | undefined): string | undefined {
+  if (!message) {
+    return undefined;
+  }
+
+  return message
+    .split("\n")[0]
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
+    .replace(/token=[^&\s]+/gi, "token=[redacted]")
+    .slice(0, 240);
+}
+
+function getPrismaErrorDetails(error: unknown) {
+  const maybePrismaError = error as {
+    code?: string;
+    name?: string;
+    message?: string;
+  };
+
+  return {
+    name: maybePrismaError.name ?? "Error",
+    code: maybePrismaError.code ?? null,
+    message: sanitizePrismaMessage(maybePrismaError.message),
+  };
+}
+
+function logAdapterDiagnostic(
+  level: "info" | "error",
+  message: string,
+  details: Record<string, unknown>,
+) {
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  if (level === "error") {
+    console.error(message, details);
+    return;
+  }
+
+  console.info(message, details);
+}
+
+function createLoggingPrismaAdapter(): Adapter {
+  const adapter = PrismaAdapter(prisma);
+
+  return {
+    ...adapter,
+    async getUserByEmail(email) {
+      try {
+        const user = await adapter.getUserByEmail!(email);
+        logAdapterDiagnostic("info", "[auth.adapter] getUserByEmail completed", {
+          provider: "email",
+          userExists: Boolean(user),
+        });
+        return user;
+      } catch (error) {
+        logAdapterDiagnostic("error", "[auth.adapter] getUserByEmail failed", {
+          provider: "email",
+          error: getPrismaErrorDetails(error),
+        });
+        throw error;
+      }
+    },
+    async createUser(user: AdapterCreateUserInput) {
+      logAdapterDiagnostic("info", "[auth.adapter] createUser started", {
+        provider: "email-or-oauth",
+        hasEmail: Boolean(user.email),
+        hasName: Boolean(user.name),
+        hasImage: Boolean(user.image),
+        hasEmailVerified: Boolean(user.emailVerified),
+      });
+
+      try {
+        const createdUser = await adapter.createUser!(user);
+        logAdapterDiagnostic("info", "[auth.adapter] createUser completed", {
+          provider: "email-or-oauth",
+          createUserSucceeded: true,
+          userExists: Boolean(createdUser?.id),
+        });
+        return createdUser;
+      } catch (error) {
+        logAdapterDiagnostic("error", "[auth.adapter] createUser failed", {
+          provider: "email-or-oauth",
+          createUserSucceeded: false,
+          error: getPrismaErrorDetails(error),
+        });
+        throw error;
+      }
+    },
+    async updateUser(user: AdapterUpdateUserInput) {
+      try {
+        const updatedUser = await adapter.updateUser!(user);
+        logAdapterDiagnostic("info", "[auth.adapter] updateUser completed", {
+          provider: "email-or-oauth",
+          hasEmailVerified: Boolean(user.emailVerified),
+          updateUserSucceeded: true,
+        });
+        return updatedUser;
+      } catch (error) {
+        logAdapterDiagnostic("error", "[auth.adapter] updateUser failed", {
+          provider: "email-or-oauth",
+          hasEmailVerified: Boolean(user.emailVerified),
+          error: getPrismaErrorDetails(error),
+        });
+        throw error;
+      }
+    },
+  };
+}
 
 function cleanEnv(key: string): string | undefined {
   const value = process.env[key]?.trim();
@@ -433,7 +548,7 @@ if (providers.length === 0) {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: createLoggingPrismaAdapter(),
   // Ensure a stable secret is provided; in production this MUST be set.
   secret:
     process.env.NEXTAUTH_SECRET ??

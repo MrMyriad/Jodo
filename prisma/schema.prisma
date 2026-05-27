@@ -99,6 +99,8 @@ model User {
   id               String    @id @default(cuid())
   email            String    @unique
   name             String?
+  image            String?
+  emailVerified    DateTime?
   phone            String?
   language         String    @default("en") // en, hi, ta, te
   plan             Plan      @default(FREE)
