@@ -22,6 +22,18 @@ type EmailServerConfig = {
 
 type MagicLinkTransport = "resend-api" | "smtp" | "disabled";
 
+type MagicLinkUrlDiagnostics = {
+  sourceHost: string | null;
+  sourcePath: string | null;
+  finalHost: string | null;
+  finalPath: string | null;
+  callbackHost: string | null;
+  callbackPath: string | null;
+  hasToken: boolean;
+  hasEmail: boolean;
+  rebuilt: boolean;
+};
+
 const providers: NonNullable<NextAuthOptions["providers"]> = [];
 
 function cleanEnv(key: string): string | undefined {
@@ -34,7 +46,10 @@ function hasEnv(key: string): boolean {
 }
 
 function getAuthBaseUrl(): string | undefined {
-  return cleanEnv("NEXTAUTH_URL") ?? cleanEnv("NEXT_PUBLIC_APP_URL");
+  return (cleanEnv("NEXTAUTH_URL") ?? cleanEnv("NEXT_PUBLIC_APP_URL"))?.replace(
+    /\/+$/,
+    "",
+  );
 }
 
 function getEmailServerConfig(): EmailServerConfig | null {
@@ -79,8 +94,122 @@ function getMagicLinkTransport(): MagicLinkTransport {
   return getEmailServerConfig() ? "smtp" : "disabled";
 }
 
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function normalizeMagicLinkCallbackUrl(
+  callbackUrl: string | null,
+  baseUrl: string,
+): URL {
+  const fallback = new URL("/dashboard", baseUrl);
+
+  if (!callbackUrl) {
+    return fallback;
+  }
+
+  try {
+    const parsed = new URL(callbackUrl, baseUrl);
+    const isSameOrigin = parsed.origin === fallback.origin;
+    const isVerifyRequestPage =
+      parsed.pathname === "/auth/verify-request" ||
+      parsed.pathname === "/api/auth/verify-request";
+
+    if (!isSameOrigin || isVerifyRequestPage) {
+      return fallback;
+    }
+
+    return parsed;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeUrlParts(url: URL | null) {
+  return {
+    host: url?.host ?? null,
+    path: url?.pathname ?? null,
+  };
+}
+
+function createEmailVerificationUrl({
+  rawUrl,
+  token,
+  identifier,
+  providerId,
+}: {
+  rawUrl: string;
+  token: string;
+  identifier: string;
+  providerId: string;
+}): { verificationUrl: string; diagnostics: MagicLinkUrlDiagnostics } {
+  const baseUrl = getAuthBaseUrl() ?? "http://localhost:3000";
+  let sourceUrl: URL | null = null;
+
+  try {
+    sourceUrl = new URL(rawUrl, baseUrl);
+  } catch {
+    sourceUrl = null;
+  }
+
+  const expectedPath = `/api/auth/callback/${providerId}`;
+  const sourceIsCallback = sourceUrl?.pathname === expectedPath;
+  const sourceHasToken = Boolean(sourceUrl?.searchParams.get("token"));
+  const sourceHasEmail = Boolean(sourceUrl?.searchParams.get("email"));
+
+  const finalUrl =
+    sourceIsCallback && sourceHasToken && sourceHasEmail
+      ? new URL(sourceUrl!.toString())
+      : new URL(expectedPath, baseUrl);
+
+  if (!finalUrl.searchParams.get("token")) {
+    finalUrl.searchParams.set("token", token);
+  }
+
+  if (!finalUrl.searchParams.get("email")) {
+    finalUrl.searchParams.set("email", identifier);
+  }
+
+  const callbackUrl = normalizeMagicLinkCallbackUrl(
+    finalUrl.searchParams.get("callbackUrl"),
+    baseUrl,
+  );
+  finalUrl.searchParams.set("callbackUrl", callbackUrl.toString());
+
+  const sourceParts = safeUrlParts(sourceUrl);
+  const finalParts = safeUrlParts(finalUrl);
+  const callbackParts = safeUrlParts(callbackUrl);
+
+  return {
+    verificationUrl: finalUrl.toString(),
+    diagnostics: {
+      sourceHost: sourceParts.host,
+      sourcePath: sourceParts.path,
+      finalHost: finalParts.host,
+      finalPath: finalParts.path,
+      callbackHost: callbackParts.host,
+      callbackPath: callbackParts.path,
+      hasToken: Boolean(finalUrl.searchParams.get("token")),
+      hasEmail: Boolean(finalUrl.searchParams.get("email")),
+      rebuilt: !sourceIsCallback || !sourceHasToken || !sourceHasEmail,
+    },
+  };
+}
+
+function logMagicLinkUrlDiagnostics(diagnostics: MagicLinkUrlDiagnostics) {
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  console.info("[auth.email] magic-link URL diagnostics", diagnostics);
+}
+
 function buildMagicLinkEmail(url: string) {
-  const escapedUrl = url.replace(/"/g, "&quot;");
+  const escapedUrl = escapeHtmlAttribute(url);
 
   return {
     subject: "Sign in to JODO",
@@ -98,6 +227,7 @@ function buildMagicLinkEmail(url: string) {
 
 async function sendResendVerificationRequest({
   identifier,
+  token,
   url,
   provider,
 }: SendVerificationRequestParams) {
@@ -106,7 +236,16 @@ async function sendResendVerificationRequest({
     throw new Error("Resend API client is not configured.");
   }
 
-  const email = buildMagicLinkEmail(url);
+  const { verificationUrl, diagnostics } = createEmailVerificationUrl({
+    rawUrl: url,
+    token,
+    identifier,
+    providerId: provider.id,
+  });
+
+  logMagicLinkUrlDiagnostics(diagnostics);
+
+  const email = buildMagicLinkEmail(verificationUrl);
   const { error } = await resend.emails.send({
     from: provider.from,
     to: [identifier],
