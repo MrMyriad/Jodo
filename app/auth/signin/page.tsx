@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 import { AuthForm } from "@/components/auth/auth-form";
+import { authOptions } from "@/lib/auth";
 
 type SignInPageProps = {
   searchParams?: {
@@ -6,7 +9,13 @@ type SignInPageProps = {
   };
 };
 
-export default function SignInPage({ searchParams }: SignInPageProps) {
+export default async function SignInPage({ searchParams }: SignInPageProps) {
+  const session = await getServerSession(authOptions);
+
+  if (session?.user?.id) {
+    redirect("/dashboard");
+  }
+
   const callbackUrl = searchParams?.callbackUrl ?? "/dashboard";
 
   return (

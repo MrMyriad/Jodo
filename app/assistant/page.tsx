@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Zap } from "lucide-react";
 import { AutomationAssistant } from "@/components/assistant/automation-assistant";
+import { AuthNav } from "@/components/layout/auth-nav";
 
 export const metadata: Metadata = {
   title: "Indian Business Automation Assistant | JODO",
@@ -42,20 +43,14 @@ function AssistantHeader() {
           </Link>
           <Link
             href="/pricing"
-            prefetch
+            prefetch={false}
             className="text-slate-400 transition hover:text-white"
           >
             Pricing
           </Link>
         </div>
 
-        <Link
-          href="/auth/signin"
-          prefetch
-          className="text-sm font-medium text-slate-400 transition hover:text-white"
-        >
-          Sign in
-        </Link>
+        <AuthNav />
       </div>
     </nav>
   );

@@ -112,6 +112,15 @@ export function SidebarNav({
             </Link>
           ))}
         </nav>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{userName}</p>
+            <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
+          </div>
+          <div className="shrink-0">
+            <SignOutButton compact />
+          </div>
+        </div>
         <div className="mt-3">
           <LanguageSwitcher initialLanguage={language} />
         </div>

@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { AuthNav } from "@/components/layout/auth-nav";
 import { cn } from "@/lib/utils";
 
 type Template = {
@@ -157,20 +158,14 @@ function Header() {
           </a>
           <Link
             href="/pricing"
-            prefetch
+            prefetch={false}
             className="text-slate-400 transition hover:text-white"
           >
             Pricing
           </Link>
         </div>
 
-        <Link
-          href="/auth/signin"
-          prefetch
-          className="text-sm font-medium text-slate-400 transition hover:text-white"
-        >
-          Sign in
-        </Link>
+        <AuthNav />
       </div>
     </nav>
   );
