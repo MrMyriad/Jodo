@@ -41,7 +41,7 @@ export type AssistantRecommendation = {
   confidence: "High" | "Medium";
   requiredIntegrations: string[];
   workflow: AssistantWorkflowStep[];
-  zapierGap: string[];
+  workflowFit: string[];
   launchChecklist: string[];
   messagePreview: string;
 };
@@ -162,7 +162,7 @@ const playbooks: Record<AutomationGoalId, AssistantRecommendation> = {
         detail: "Send receipt, amount, order details and invoice link.",
       },
     ],
-    zapierGap: [
+    workflowFit: [
       "No generic webhook mapping for the user to decode.",
       "Indian payment and WhatsApp defaults are built into the template.",
       "Execution logs explain failures in business language.",
@@ -206,7 +206,7 @@ const playbooks: Record<AutomationGoalId, AssistantRecommendation> = {
         detail: "Send product catalogue or next-step message on WhatsApp.",
       },
     ],
-    zapierGap: [
+    workflowFit: [
       "Built around Indian Instagram-to-WhatsApp selling behavior.",
       "Lead capture and WhatsApp follow-up are one guided setup.",
       "Templates avoid automation jargon and talk like a sales assistant.",
@@ -246,9 +246,9 @@ const playbooks: Record<AutomationGoalId, AssistantRecommendation> = {
         detail: "Append the order row to the team tracking spreadsheet.",
       },
     ],
-    zapierGap: [
+    workflowFit: [
       "Optimized for chat-first order collection.",
-      "Simple enough for staff to understand without Zapier training.",
+      "Simple enough for staff to understand without automation training.",
       "Designed to expand into COD confirmation and shipping updates.",
     ],
     launchChecklist: [
@@ -286,7 +286,7 @@ const playbooks: Record<AutomationGoalId, AssistantRecommendation> = {
         detail: "Send menu, booking link, location or catalogue immediately.",
       },
     ],
-    zapierGap: [
+    workflowFit: [
       "Built for Indian phone + WhatsApp recovery behavior.",
       "No need to stitch telecom webhooks manually.",
       "Failure messages tell staff exactly which connection needs attention.",

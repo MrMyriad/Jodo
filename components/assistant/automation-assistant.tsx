@@ -278,10 +278,10 @@ export function AutomationAssistant() {
 
             <div className="mt-4 rounded-2xl border border-white/[0.06] bg-[#101622] p-5">
               <div className="mb-4 text-sm font-semibold text-white">
-                Why this can beat Zapier for this workflow
+                Why this works for this workflow
               </div>
               <div className="grid gap-3 md:grid-cols-3">
-                {recommendation.zapierGap.map((item) => (
+                {recommendation.workflowFit.map((item) => (
                   <div
                     key={item}
                     className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-sm leading-6 text-slate-400"

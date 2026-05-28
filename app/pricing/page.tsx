@@ -202,7 +202,7 @@ export default function PricingPage() {
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-slate-300">
               <Sparkles className="size-4 text-[#6366f1]" />
-              Save Rs 2,500/month vs Zapier
+              Built for Indian SMB teams
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight text-white md:text-6xl">

@@ -1,6 +1,6 @@
 # JODO
 
-JODO is a Zapier alternative focused on Indian businesses with workflows around WhatsApp, Razorpay, Instagram, and Google Sheets.
+JODO is an automation platform focused on Indian businesses with workflows around WhatsApp, Razorpay, Instagram, GST Desk, and Google Sheets.
 
 ## Current Implementation Status
 

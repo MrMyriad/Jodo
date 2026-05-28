@@ -57,35 +57,30 @@ const templates: Template[] = [
   },
 ];
 
-const comparisonRows = [
+const capabilityRows = [
   {
-    name: "Starting price",
-    ours: "Rs 299/month",
-    zapier: "~Rs 2,800/month",
+    name: "Pricing built for SMBs",
+    detail: "Start with a free plan and upgrade from Rs 299/month.",
     highlight: true,
   },
   {
-    name: "Tasks/month on paid plan",
-    ours: "10,000",
-    zapier: "750",
+    name: "High-volume daily work",
+    detail: "Run up to 10,000 monthly tasks on the Pro plan.",
     highlight: true,
   },
   {
     name: "Indian integrations",
-    ours: "Razorpay, WhatsApp, GST",
-    zapier: "Mostly global defaults",
+    detail: "Razorpay, WhatsApp, GST workflows, Zoho Books, Exotel and Sheets.",
     highlight: true,
   },
   {
     name: "Execution speed",
-    ours: "Instant webhooks",
-    zapier: "Polling depends on tier",
+    detail: "Webhook-first workflows trigger as soon as business events arrive.",
     highlight: false,
   },
   {
-    name: "Hindi support",
-    ours: "Built in",
-    zapier: "Not localized",
+    name: "Localized operator experience",
+    detail: "Simple English/Hindi-first labels for non-technical teams.",
     highlight: false,
   },
 ];
@@ -288,9 +283,9 @@ function AssistantTeaser() {
                 Stop browsing templates. Let JODO choose the workflow.
               </h2>
               <p className="mt-4 text-sm leading-7 text-slate-400 md:text-base">
-                Zapier starts with apps. JODO starts with your Indian
-                business problem: payments, WhatsApp replies, Instagram leads,
-                missed calls, GST invoices and order sheets.
+                JODO starts with your Indian business problem: payments,
+                WhatsApp replies, Instagram leads, missed calls, GST invoices
+                and order sheets.
               </p>
               <Link
                 href="/assistant"
@@ -529,22 +524,22 @@ function IntegrationsStrip() {
   );
 }
 
-function ComparisonTable() {
+function CapabilitySection() {
   return (
     <section className="relative py-24 md:py-32">
       <div className="container mx-auto px-6">
         <div className="mx-auto mb-14 max-w-3xl text-center">
           <h2 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
-            Why switch from Zapier?
+            Built around Indian business operations.
           </h2>
           <p className="mt-4 text-lg leading-8 text-slate-400">
-            A simpler automation layer for the Indian tools your business
-            already runs on.
+            A guided automation layer for payments, WhatsApp conversations,
+            GST preparation, lead follow-ups and daily team handoffs.
           </p>
         </div>
 
         <div className="mx-auto grid max-w-2xl gap-3 md:hidden">
-          {comparisonRows.map((feature) => (
+          {capabilityRows.map((feature) => (
             <div
               key={feature.name}
               className={cn(
@@ -555,24 +550,9 @@ function ComparisonTable() {
               <div className="text-sm font-semibold text-white">
                 {feature.name}
               </div>
-              <div className="mt-4 grid gap-3">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.035] p-3">
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-[#c7d2fe]">
-                    JODO
-                  </div>
-                  <div className="mt-1 break-words text-sm font-semibold text-[#c7d2fe]">
-                    {feature.ours}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                    Zapier
-                  </div>
-                  <div className="mt-1 break-words text-sm text-slate-400">
-                    {feature.zapier}
-                  </div>
-                </div>
-              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                {feature.detail}
+              </p>
             </div>
           ))}
         </div>
@@ -583,21 +563,18 @@ function ComparisonTable() {
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   <th className="p-5 text-sm font-medium text-slate-500">
-                    Feature
+                    Capability
                   </th>
-                  <th className="p-5 text-center text-sm font-semibold text-white">
+                  <th className="p-5 text-left text-sm font-semibold text-white">
                     <span className="inline-flex items-center gap-2 rounded-full bg-[#6366f1]/10 px-3 py-1.5 text-[#c7d2fe]">
                       <Sparkles className="size-4" />
                       JODO
                     </span>
                   </th>
-                  <th className="p-5 text-center text-sm font-medium text-slate-500">
-                    Zapier
-                  </th>
                 </tr>
               </thead>
               <tbody>
-                {comparisonRows.map((feature) => (
+                {capabilityRows.map((feature) => (
                   <tr
                     key={feature.name}
                     className={cn(
@@ -608,11 +585,8 @@ function ComparisonTable() {
                     <td className="p-5 text-sm font-medium text-white md:text-base">
                       {feature.name}
                     </td>
-                    <td className="p-5 text-center text-sm font-semibold text-[#c7d2fe] md:text-base">
-                      {feature.ours}
-                    </td>
-                    <td className="p-5 text-center text-sm text-slate-500 md:text-base">
-                      {feature.zapier}
+                    <td className="p-5 text-sm leading-7 text-slate-400 md:text-base">
+                      {feature.detail}
                     </td>
                   </tr>
                 ))}
@@ -671,7 +645,7 @@ export function PremiumHomepage() {
       <LiveDemo />
       <TemplatesSection />
       <IntegrationsStrip />
-      <ComparisonTable />
+      <CapabilitySection />
       <FinalCta />
     </main>
   );

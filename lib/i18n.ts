@@ -32,7 +32,7 @@ const translations: Record<SupportedLanguage, Record<TranslationKey, string>> =
       "language.hindi": "Hindi",
       "pricing.title": "Simple, transparent pricing",
       "pricing.subtitle": "Start free. Upgrade when you are ready. Cancel anytime.",
-      "pricing.badge": "Save Rs 2,500/month vs Zapier",
+      "pricing.badge": "भारतीय SMB टीमों के लिए बनाया गया",
     },
     hi: {
       "nav.home": "होम",
@@ -47,7 +47,7 @@ const translations: Record<SupportedLanguage, Record<TranslationKey, string>> =
       "language.hindi": "हिंदी",
       "pricing.title": "सरल और पारदर्शी प्राइसिंग",
       "pricing.subtitle": "फ्री से शुरू करें, जरूरत पर अपग्रेड करें, कभी भी कैंसल करें।",
-      "pricing.badge": "Zapier के मुकाबले हर महीने Rs 2,500 बचाएं",
+      "pricing.badge": "Built for Indian SMB teams",
     },
   };
 
