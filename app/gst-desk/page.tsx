@@ -98,6 +98,7 @@ export default async function GstDeskPage() {
             <CardContent className="flex flex-col gap-3">
               <Link href="/gst-desk/clients" className={buttonVariants({ variant: "default" })}>Manage clients</Link>
               <Link href="/gst-desk/upload" className={buttonVariants({ variant: "outline" })}>Upload documents</Link>
+              <Link href="/gst-desk/review-queue" className={buttonVariants({ variant: "outline" })}>Review queue</Link>
               <Link href="/gst-desk/review" className={buttonVariants({ variant: "outline" })}>Review extracted rows</Link>
               <Link href="/gst-desk/export" className={buttonVariants({ variant: "outline" })}>
                 <Download className="mr-2 size-4" />

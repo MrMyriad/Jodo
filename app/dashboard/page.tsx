@@ -300,6 +300,18 @@ export default async function DashboardPage() {
                 Connect Account
               </Link>
               <Link
+                href="/dashboard/outcomes"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                View Outcome Dashboard
+              </Link>
+              <Link
+                href="/done-for-you"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Request Setup Help
+              </Link>
+              <Link
                 href="/pricing"
                 className={buttonVariants({ variant: "outline" })}
               >

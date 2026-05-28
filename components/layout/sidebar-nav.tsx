@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 import {
+  BarChart3,
   CreditCard,
   FileText,
   Home,
@@ -27,6 +28,7 @@ type SidebarNavProps = {
 
 const navItems = [
   { href: "/dashboard", labelKey: "nav.home", icon: Home },
+  { href: "/dashboard/outcomes", labelKey: "nav.outcomes", icon: BarChart3 },
   { href: "/workflows", labelKey: "nav.workflows", icon: Workflow },
   { href: "/templates", labelKey: "nav.templates", icon: LayoutTemplate },
   { href: "/connections", labelKey: "nav.connect", icon: Link2 },

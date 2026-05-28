@@ -139,6 +139,13 @@ function Header() {
           >
             Assistant
           </Link>
+          <Link
+            href="/done-for-you"
+            prefetch={false}
+            className="text-slate-400 transition hover:text-white"
+          >
+            Done for you
+          </Link>
           <a
             href="#templates"
             className="text-slate-400 transition hover:text-white"
@@ -294,6 +301,13 @@ function AssistantTeaser() {
               >
                 Open automation assistant
                 <ArrowRight className="size-4" />
+              </Link>
+              <Link
+                href="/done-for-you"
+                prefetch={false}
+                className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 px-5 text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/[0.03] hover:text-white"
+              >
+                Request done-for-you setup
               </Link>
             </div>
 
@@ -524,6 +538,73 @@ function IntegrationsStrip() {
   );
 }
 
+function IndustrySection() {
+  const industries = [
+    {
+      title: "D2C brands",
+      body: "Payment receipts, order sheets, WhatsApp updates, and Instagram lead handoffs.",
+      href: "/industries/d2c-brands",
+    },
+    {
+      title: "Instagram sellers",
+      body: "DM follow-ups, catalog messages, and lead capture before buyers go cold.",
+      href: "/industries/instagram-sellers",
+    },
+    {
+      title: "CA firms",
+      body: "GST client workspaces, missing document reminders, review queues, and exports.",
+      href: "/industries/ca-firms",
+    },
+    {
+      title: "Clinics and salons",
+      body: "Missed call recovery, appointment follow-ups, and daily owner summaries.",
+      href: "/industries/clinics-salons",
+    },
+  ];
+
+  return (
+    <section className="relative py-24 md:py-32">
+      <div className="container mx-auto px-6">
+        <div className="mb-12 max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#818cf8]">
+            Industry operating systems
+          </p>
+          <h2 className="mt-3 text-4xl font-bold tracking-tight text-white md:text-5xl">
+            Start from the business, then choose the workflow.
+          </h2>
+          <p className="mt-4 text-lg leading-8 text-slate-400">
+            JODO can be sold as software, but it can also behave like an
+            AI-native service desk for the repetitive back-office work Indian
+            businesses already pay humans to chase.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {industries.map((industry) => (
+            <Link
+              key={industry.href}
+              href={industry.href}
+              prefetch={false}
+              className="group rounded-2xl border border-white/[0.06] bg-[#1a1f2e] p-5 transition hover:-translate-y-1 hover:border-[#6366f1]/30 hover:bg-[#1d2333]"
+            >
+              <h3 className="text-lg font-semibold text-white">
+                {industry.title}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                {industry.body}
+              </p>
+              <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-[#c7d2fe]">
+                View playbook
+                <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CapabilitySection() {
   return (
     <section className="relative py-24 md:py-32">
@@ -613,18 +694,18 @@ function FinalCta() {
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
-              href="/auth/signin"
+              href="/solutions/razorpay-gst-whatsapp"
               prefetch
               className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#6366f1] px-6 text-sm font-medium text-white transition hover:bg-[#5558e3]"
             >
-              Start free
+              Open flagship workflow
             </Link>
             <Link
-              href="/templates"
-              prefetch
+              href="/done-for-you"
+              prefetch={false}
               className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/10 px-6 text-sm font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.03] hover:text-white"
             >
-              View templates
+              Request setup help
             </Link>
           </div>
         </div>
@@ -645,6 +726,7 @@ export function PremiumHomepage() {
       <LiveDemo />
       <TemplatesSection />
       <IntegrationsStrip />
+      <IndustrySection />
       <CapabilitySection />
       <FinalCta />
     </main>

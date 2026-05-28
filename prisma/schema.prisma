@@ -95,6 +95,25 @@ enum GstAuditAction {
   REVIEW_NOTE_ADDED
 }
 
+enum ServiceSetupType {
+  GST_PREP
+  RAZORPAY_RECEIPTS
+  D2C_ORDER_OPS
+  INSTAGRAM_LEAD_FOLLOWUP
+  MISSED_CALL_RECOVERY
+  CA_FIRM_BACK_OFFICE
+}
+
+enum ServiceSetupStatus {
+  NEW
+  TRIAGED
+  IN_PROGRESS
+  WAITING_ON_CLIENT
+  READY_FOR_REVIEW
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id               String    @id @default(cuid())
   email            String    @unique
@@ -119,6 +138,7 @@ model User {
   gstReminderDrafts GstReminderDraft[]
   gstReviewNotes    GstReviewNote[]
   gstAuditLogs      GstAuditLog[]
+  serviceSetupRequests ServiceSetupRequest[]
 
   tasksUsedThisMonth Int      @default(0)
   tasksResetAt       DateTime @default(now())
@@ -449,6 +469,35 @@ model GstAuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("gst_audit_logs")
+}
+
+model ServiceSetupRequest {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type   ServiceSetupType
+  status ServiceSetupStatus @default(NEW)
+
+  businessName    String
+  contactName     String?
+  phone           String?
+  email           String?
+  monthlyVolume   String?
+  currentTools    String[] @default([])
+  painPoints      String[] @default([])
+  preferredChannel String @default("WHATSAPP")
+  notes           String? @db.Text
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("service_setup_requests")
 }
 
 // NextAuth models

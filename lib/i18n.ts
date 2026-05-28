@@ -4,6 +4,7 @@ export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 export type TranslationKey =
   | "nav.home"
+  | "nav.outcomes"
   | "nav.workflows"
   | "nav.templates"
   | "nav.connect"
@@ -21,6 +22,7 @@ const translations: Record<SupportedLanguage, Record<TranslationKey, string>> =
   {
     en: {
       "nav.home": "Home",
+      "nav.outcomes": "Outcomes",
       "nav.workflows": "Workflows",
       "nav.templates": "Templates",
       "nav.connect": "Connect",
@@ -36,6 +38,7 @@ const translations: Record<SupportedLanguage, Record<TranslationKey, string>> =
     },
     hi: {
       "nav.home": "होम",
+      "nav.outcomes": "आउटकम",
       "nav.workflows": "वर्कफ्लो",
       "nav.templates": "टेम्पलेट",
       "nav.connect": "कनेक्ट",
