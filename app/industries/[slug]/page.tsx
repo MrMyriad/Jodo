@@ -99,6 +99,25 @@ const industries: IndustryPage[] = [
       "Less owner-dependent admin",
     ],
   },
+  {
+    slug: "local-services",
+    eyebrow: "Local service businesses",
+    title: "Recover missed inquiries and keep customers moving on WhatsApp.",
+    description:
+      "For salons, clinics, gyms, repair shops, and appointment-led teams, JODO turns missed calls, payments, and follow-ups into simple operator-ready workflows.",
+    primaryCta: "Set up local service ops",
+    service: "local-service-ops",
+    workflows: [
+      "Missed call -> WhatsApp menu",
+      "Payment confirmation -> receipt message",
+      "Appointment inquiry -> reminder draft",
+    ],
+    outcomes: [
+      "Fewer missed inquiries",
+      "Faster customer follow-up",
+      "Less owner-dependent admin",
+    ],
+  },
 ];
 
 export function generateStaticParams() {
